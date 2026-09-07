@@ -1876,9 +1876,11 @@
       setStatus("Kobler til Trimble Connect…", true);
 
       try{
-        API = await TrimbleConnectWorkspace.connect(window.top,(event,args)=>{
+        API = await (window.parent?.BIMToolsBridge?.connect ? window.parent.BIMToolsBridge.connect((event,args)=>{
           if(event === "extension.accessToken") handleToken(args.data);
-        });
+        }) : TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
+          if(event === "extension.accessToken") handleToken(args.data);
+        }));
 
         const proj = await API.project.getCurrentProject();
         currentProjectId = proj.id;
