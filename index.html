@@ -63,6 +63,18 @@ body{display:flex;flex-direction:column}
 
 <script>
 let API=null;
+const bridgeSubscribers = new Set();
+window.BIMToolsBridge = {
+  api: null,
+  ready: null,
+  connect(onEvent){
+    if(typeof onEvent === 'function') bridgeSubscribers.add(onEvent);
+    return this.ready;
+  },
+  disconnect(onEvent){
+    if(typeof onEvent === 'function') bridgeSubscribers.delete(onEvent);
+  }
+};
 const apps=new Map();
 let activeId=null;
 
@@ -138,7 +150,13 @@ function closeTool(id){
 
 (async()=>{
   try{
-    API=await TrimbleConnectWorkspace.connect(window.parent,()=>{},30000);
+    window.BIMToolsBridge.ready = TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
+      for(const cb of [...bridgeSubscribers]){
+        try{ cb(event,args); }catch(e){ console.error("BIMToolsBridge event error",e); }
+      }
+    },30000);
+    API = await window.BIMToolsBridge.ready;
+    window.BIMToolsBridge.api = API;
     document.getElementById('statusText').textContent='Tilkoblet Trimble Connect';
     document.getElementById('statusDot').classList.add('ok');
   }catch(e){
