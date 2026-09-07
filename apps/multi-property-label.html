@@ -172,6 +172,8 @@
 </main>
 
 <script>
+function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&window.parent.BIMToolsBridge)?window.parent.BIMToolsBridge:null;}catch(e){return null;}}
+
   let API = null;
   let availableProps = {};
   const ifcGuidCache = new Map();
@@ -838,7 +840,7 @@
 
   async function connect(){
     try{
-      API = await (window.parent?.BIMToolsBridge?.connect ? window.parent.BIMToolsBridge.connect(onWorkspaceEvent) : TrimbleConnectWorkspace.connect(window.parent, onWorkspaceEvent, 30000));
+      API = await (getBIMToolsBridge() ? getBIMToolsBridge().connect(onWorkspaceEvent) : TrimbleConnectWorkspace.connect(window.parent, onWorkspaceEvent, 30000));
 
       els.scanBtn.disabled = false;
       els.clearBtn.disabled = false;
