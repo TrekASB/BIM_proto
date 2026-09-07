@@ -1876,7 +1876,7 @@
       setStatus("Kobler til Trimble Connect…", true);
 
       try{
-        API = await TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
+        API = await TrimbleConnectWorkspace.connect(window.top,(event,args)=>{
           if(event === "extension.accessToken") handleToken(args.data);
         });
 
