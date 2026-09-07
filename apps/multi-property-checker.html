@@ -190,7 +190,7 @@
 
   async function connect(){
     try{
-      API = await TrimbleConnectWorkspace.connect(window.top, () => {}, 30000);
+      API = await (window.parent?.BIMToolsBridge?.connect ? window.parent.BIMToolsBridge.connect(() => {}) : TrimbleConnectWorkspace.connect(window.parent, () => {}, 30000));
       els.status.textContent = "✅ Tilkoblet – trykk «Oppdater liste» for å hente Property Sets.";
       els.scanButton.disabled = false;
     }catch(e){
