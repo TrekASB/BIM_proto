@@ -686,6 +686,8 @@
   </div>
 
   <script>
+function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&window.parent.BIMToolsBridge)?window.parent.BIMToolsBridge:null;}catch(e){return null;}}
+
     if (window.ChartDataLabels) Chart.register(ChartDataLabels);
 
     Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
@@ -1876,7 +1878,7 @@
       setStatus("Kobler til Trimble Connect…", true);
 
       try{
-        API = await (window.parent?.BIMToolsBridge?.connect ? window.parent.BIMToolsBridge.connect((event,args)=>{
+        API = await (getBIMToolsBridge() ? getBIMToolsBridge().connect((event,args)=>{
           if(event === "extension.accessToken") handleToken(args.data);
         }) : TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
           if(event === "extension.accessToken") handleToken(args.data);
