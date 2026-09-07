@@ -838,7 +838,7 @@
 
   async function connect(){
     try{
-      API = await TrimbleConnectWorkspace.connect(window.parent, onWorkspaceEvent, 30000);
+      API = await TrimbleConnectWorkspace.connect(window.top, onWorkspaceEvent, 30000);
 
       els.scanBtn.disabled = false;
       els.clearBtn.disabled = false;
