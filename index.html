@@ -151,12 +151,22 @@ function closeTool(id){
 (async()=>{
   try{
     window.BIMToolsBridge.ready = TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
+      if(event === 'extension.command' && args && args.data === 'BIM_TOOLS_HOME'){
+        showHome();
+      }
       for(const cb of [...bridgeSubscribers]){
         try{ cb(event,args); }catch(e){ console.error("BIMToolsBridge event error",e); }
       }
     },30000);
     API = await window.BIMToolsBridge.ready;
     window.BIMToolsBridge.api = API;
+
+    await API.ui.setMenu({
+      title: 'Norconsult BIM Tools',
+      icon: 'https://trekasb.github.io/BIM_proto/assets/bim-tools-icon.svg?v=3',
+      command: 'BIM_TOOLS_HOME'
+    });
+
     document.getElementById('statusText').textContent='Tilkoblet Trimble Connect';
     document.getElementById('statusDot').classList.add('ok');
   }catch(e){
