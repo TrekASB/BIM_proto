@@ -347,7 +347,7 @@ function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&
     try{
       const models = await API.viewer.getObjects();
       if (!models || !models.length){
-        els.status.textContent = ℹ️ Fant ingen objekter i visningen. Sørg for at modell(er) er innlastet.";
+        els.status.textContent = "ℹ️ Fant ingen objekter i visningen. Sørg for at modell(er) er innlastet.";
         return;
       }
 
