@@ -152,6 +152,8 @@
 </main>
 
 <script>
+function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&window.parent.BIMToolsBridge)?window.parent.BIMToolsBridge:null;}catch(e){return null;}}
+
   let API = null;
   let availableProps = {};
   let charts = [];
@@ -190,7 +192,7 @@
 
   async function connect(){
     try{
-      API = await (window.parent?.BIMToolsBridge?.connect ? window.parent.BIMToolsBridge.connect(() => {}) : TrimbleConnectWorkspace.connect(window.parent, () => {}, 30000));
+      API = await (getBIMToolsBridge() ? getBIMToolsBridge().connect(() => {}) : TrimbleConnectWorkspace.connect(window.parent, () => {}, 30000));
       els.status.textContent = "✅ Tilkoblet – trykk «Oppdater liste» for å hente Property Sets.";
       els.scanButton.disabled = false;
     }catch(e){
