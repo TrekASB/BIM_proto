@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8" />
+  <title>MultiProperty Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <style>
+    :root{
+      --primary:#0069d9; --success:#28a745; --danger:#e74c3c; --warning:#ffc107;
+      --light:#f8f9fa; --dark:#343a40; --gray:#6c757d; --border:#dee2e6;
+    }
+    body{margin:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#f5f7fa 0%,#e4edf5 100%);color:#333;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+    header{background:rgba(255,255,255,.95);backdrop-filter:blur(10px);padding:18px 24px;border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.08);display:flex;flex-wrap:wrap;align-items:center;gap:18px;position:relative;z-index:10;}
+    .title-container{display:flex;align-items:center;gap:12px;flex:1;min-width:300px;}
+    .logo{width:144px;height:144px;border-radius:8px;object-fit:contain;box-shadow:0 2px 6px rgba(0,0,0,.1);background:#fff;padding:4px;}
+    .title-block{display:flex;flex-direction:column;}
+    .title{font-size:22px;font-weight:700;color:var(--primary);margin:0;}
+    .org{font-size:15px;font-weight:600;color:var(--dark);margin-top:-4px;}
+    .dev{font-size:12px;color:var(--gray);margin-top:-2px;font-style:italic;}
+    .subtitle{font-size:14px;color:var(--gray);font-style:italic;margin-left:auto;white-space:nowrap;}
+    label{font-weight:600;display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap;}
+    select,button{padding:10px 16px;border-radius:8px;border:1px solid var(--border);font-size:14px;transition:all .2s ease;}
+    select{background:#fff;min-width:180px;max-width:260px;}
+    select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,105,217,.15);outline:none;}
+    button{background:var(--primary);color:#fff;border:none;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+    button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 8px rgba(0,0,0,.15);}
+    button#scanButton{background:var(--success);} button#scanButton:hover:not(:disabled){background:#218838;}
+    button#resetButton{background:var(--danger);} button#resetButton:hover:not(:disabled){background:#c0392b;}
+    button#colorizeButton{background:#00c2cb;} button#colorizeButton:hover:not(:disabled){background:#00a0aa;}
+    button:disabled{background:var(--gray);cursor:not-allowed;transform:none;box-shadow:none;opacity:.85;}
+    .prop-group{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+
+    main{flex:1;padding:24px;overflow-y:auto;display:grid;gap:28px;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));justify-items:center;}
+    .chart-card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:28px 24px 22px;width:100%;max-width:550px;text-align:center;transition:transform .2s ease;position:relative;overflow:hidden;}
+    .chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--primary),#00c2cb);border-radius:16px 16px 0 0;}
+    .chart-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.18);}
+    .chart-card h3{margin:4px 0 16px;font-size:18px;color:var(--dark);font-weight:600;word-break:break-word;}
+    .chart-summary{margin-top:8px;font-size:13px;color:var(--gray);}
+    canvas{max-height:320px;border-radius:12px;}
+
+    #status,#error{grid-column:1/-1;text-align:center;font-size:15px;padding:10px 14px;border-radius:8px;}
+    #status{background:rgba(40,167,69,.1);color:var(--success);border:1px solid rgba(40,167,69,.2);}
+    #error{background:rgba(220,53,69,.08);color:var(--danger);border:1px solid rgba(220,53,69,.15);display:none;}
+
+    .footer-credit{grid-column:1/-1;text-align:center;font-size:14px;color:#888;margin-top:8px;font-style:italic;}
+    .button-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:flex-end;}
+
+    .detail-container{margin-top:12px;text-align:left;background:#fafafa;border-radius:12px;padding:10px 12px;border:1px solid #eee;max-height:300px;overflow:auto;font-size:12px;}
+    .detail-section{margin-bottom:14px;}
+    .detail-title{font-size:12px;font-weight:700;margin-bottom:6px;color:var(--dark);}
+    .detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px;flex-wrap:wrap;}
+    .detail-header-left{display:flex;flex-direction:column;gap:3px;}
+    .detail-header span{font-weight:600;color:var(--dark);}
+    .detail-header small{color:var(--gray);font-weight:400;}
+    .detail-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;}
+
+    .export-btn{padding:6px 10px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:var(--primary);color:#fff;display:inline-flex;align-items:center;gap:4px;}
+    .export-btn:hover{box-shadow:0 2px 6px rgba(0,0,0,.15);transform:translateY(-1px);}
+
+    .filter-btn{
+      padding:6px 10px;border-radius:6px;border:1px solid #d5dbe3;font-size:11px;cursor:pointer;
+      background:#fff;color:#223;display:inline-flex;align-items:center;gap:6px;
+    }
+    .filter-btn:hover{box-shadow:0 2px 6px rgba(0,0,0,.08);transform:translateY(-1px);}
+    .filter-btn.active{border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,105,217,.12);}
+
+    .legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--gray);margin-top:2px;}
+    .chip{display:inline-flex;align-items:center;gap:6px;}
+    .dot{width:10px;height:10px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.08);}
+    .dot.missing{background:rgba(255,193,7,.35);}
+    .dot.dup{background:rgba(231,76,60,.25);}
+
+    .detail-table{width:100%;border-collapse:collapse;font-size:11px;}
+    .detail-table th,.detail-table td{padding:4px 6px;border-bottom:1px solid #e4e4e4;text-align:left;white-space:nowrap;}
+    .detail-table th{position:sticky;top:0;background:#f0f0f0;z-index:1;font-weight:700;}
+    .detail-table tbody tr:nth-child(even){background:#fdfdfd;}
+
+    .clickable-row{cursor:pointer;}
+    .clickable-row:hover td{background:#eef6ff;}
+
+    .row-missing td{background:rgba(255,193,7,.28);}
+    .row-duplicate td{background:rgba(231,76,60,.18);}
+    .row-missing.row-duplicate td{background:linear-gradient(90deg, rgba(255,193,7,.28), rgba(231,76,60,.18));}
+
+    .guid-cell{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;}
+    .detail-empty{font-size:12px;color:var(--gray);padding:6px 0;}
+
+    @media (max-width:1024px){
+      header{flex-direction:column;align-items:stretch;}
+      .title-container{justify-content:center;}
+      .subtitle{margin-left:0;text-align:center;}
+      .prop-group{justify-content:center;}
+      .button-row{justify-content:center;}
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="title-container">
+    <img src="../assets/norconsult-logo.svg" alt="Norconsult logo" class="logo">
+    <div class="title-block">
+      <h1 class="title">MultiProperty Checker</h1>
+      <div class="org">Norconsult Norge</div>
+      <div class="dev">Developed by Edin Dzakmic, Norconsult, (AI-assisted development)</div>
+    </div>
+  </div>
+
+  <span class="subtitle">Opptil 4 egenskaper samtidig</span>
+
+  <label>
+    Property Set:
+    <select id="psetSelect" disabled><option value="">(velg…)</option></select>
+  </label>
+
+  <div class="prop-group">
+    <label><input type="checkbox" id="cb1"> Property 1:
+      <select id="prop1" disabled><option value="">(ingen)</option></select>
+    </label>
+    <label><input type="checkbox" id="cb2"> Property 2:
+      <select id="prop2" disabled><option value="">(ingen)</option></select>
+    </label>
+    <label><input type="checkbox" id="cb3"> Property 3:
+      <select id="prop3" disabled><option value="">(ingen)</option></select>
+    </label>
+    <label><input type="checkbox" id="cb4"> Property 4:
+      <select id="prop4" disabled><option value="">(ingen)</option></select>
+    </label>
+  </div>
+
+  <div class="button-row">
+    <button id="scanButton" disabled>🔄 Oppdater liste</button>
+    <button id="loadButton" disabled>📊 Hent diagrammer</button>
+    <button id="colorizeButton" disabled>🎨 Fargelegg alle</button>
+    <button id="resetButton" disabled>🔄 Tilbakestill</button>
+  </div>
+</header>
+
+<main>
+  <div id="status">Kobler til Trimble Connect…</div>
+  <div id="error"></div>
+  <div id="chartsContainer"></div>
+  <div class="footer-credit">
+    MultiProperty Checker – Property completeness-oversikt direkte i modellen.<br>
+    Klikk på et kakestykke for å markere objekter og vise tabeller. <b>Klikk på en rad for å zoome til objektet.</b><br>
+    (IFCPROJECT / IFCSITE / IFCBUILDING / IFCBUILDINGSTOREY filtreres bort.)
+  </div>
+</main>
+
+<script>
+  let API = null;
+  let availableProps = {};
+  let charts = [];
+  let lastSelections = new Map();
+
+  const COLORS = { withValue:"rgb(46, 204, 113)", withoutValue:"rgb(231, 76, 60)" };
+
+  const els = {
+    status: document.getElementById("status"),
+    error: document.getElementById("error"),
+    chartsContainer: document.getElementById("chartsContainer"),
+    psetSelect: document.getElementById("psetSelect"),
+    scanButton: document.getElementById("scanButton"),
+    loadButton: document.getElementById("loadButton"),
+    colorizeButton: document.getElementById("colorizeButton"),
+    resetButton: document.getElementById("resetButton")
+  };
+
+  const propSelectIds = ["prop1","prop2","prop3","prop4"];
+  const cbIds = ["cb1","cb2","cb3","cb4"];
+
+  if (window.ChartDataLabels) Chart.register(ChartDataLabels);
+
+  function showError(msg){
+    els.error.textContent = msg || "";
+    els.error.style.display = msg ? "block" : "none";
+  }
+
+  function setBusy(isBusy){
+    [els.scanButton, els.loadButton, els.colorizeButton, els.resetButton].forEach(btn => {
+      if (!btn) return;
+      if (isBusy) { btn.dataset.prevDisabled = btn.disabled ? "true" : "false"; btn.disabled = true; }
+      else if (btn.dataset.prevDisabled === "false") btn.disabled = false;
+    });
+  }
+
+  async function connect(){
+    try{
+      API = await TrimbleConnectWorkspace.connect(window.parent, () => {}, 30000);
+      els.status.textContent = "✅ Tilkoblet – trykk «Oppdater liste» for å hente Property Sets.";
+      els.scanButton.disabled = false;
+    }catch(e){
+      showError("Kunne ikke koble til Trimble Connect: " + (e && e.message ? e.message : e));
+      els.status.textContent = "❌ Feil ved tilkobling.";
+    }
+  }
+
+  function clearCharts(){
+    charts.forEach(c => c.destroy());
+    charts = [];
+    els.chartsContainer.innerHTML = "";
+  }
+
+  function resetPropertySelectors(){
+    propSelectIds.forEach(id => {
+      const s = document.getElementById(id);
+      s.innerHTML = '<option value="">(ingen)</option>';
+      s.disabled = true;
+    });
+    cbIds.forEach(id => document.getElementById(id).checked = false);
+  }
+
+  function populatePropSelects(pset){
+    resetPropertySelectors();
+    if (!pset || !availableProps[pset]) return;
+
+    const props = Array.from(availableProps[pset]).sort((a,b)=>a.localeCompare(b,"nb"));
+    propSelectIds.forEach(id => {
+      const sel = document.getElementById(id);
+      props.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        sel.appendChild(opt);
+      });
+      sel.disabled = false;
+    });
+  }
+
+  // ============================
+  // Robust ignore (IFC root/container entities)
+  // ============================
+  const IGNORE_TYPES = new Set([
+    "IFCPROJECT",
+    "IFCSITE",
+    "IFCBUILDING",
+    "IFCBUILDINGSTOREY"
+  ]);
+
+  function normStr(v){
+    return (v === null || v === undefined) ? "" : String(v).trim();
+  }
+
+  function looksLikeIfcEntityName(v){
+    const s = normStr(v).toUpperCase();
+    return s.startsWith("IFC") ? s : "";
+  }
+
+  function containsIfcTypeAnywhere(obj, ifcTypeUpper){
+    const target = ifcTypeUpper.toUpperCase();
+
+    const directCandidates = [
+      obj.ifcType, obj.ifcEntity, obj.entityType, obj.type, obj.objectType, obj.className, obj.class
+    ];
+    for (const c of directCandidates){
+      const t = looksLikeIfcEntityName(c);
+      if (t === target) return true;
+    }
+
+    const nameCandidates = [obj.name, obj.objectName];
+    for (const c of nameCandidates){
+      const s = normStr(c).toUpperCase();
+      if (s === target || s.includes(target)) return true;
+    }
+
+    for (const ps of (obj.properties || [])){
+      const psName = normStr(ps.name).toUpperCase();
+      if (psName === target) return true;
+
+      for (const p of (ps.properties || [])){
+        const pn = normStr(p.name).toUpperCase();
+        const pv = normStr(p.value).toUpperCase();
+
+        if (pn === target || pv === target) return true;
+        if (pn.includes(target) || pv.includes(target)) return true;
+      }
+    }
+    return false;
+  }
+
+  function getIfcEntityTypeFromObjectProps(obj){
+    const direct = looksLikeIfcEntityName(
+      obj.ifcType || obj.ifcEntity || obj.entityType || obj.type || obj.objectType || obj.className || obj.class
+    );
+    if (direct) return direct;
+
+    const wantedPropNames = new Set([
+      "IFC TYPE","IFCTYPE","IFC ENTITY","IFCENTITY","ENTITY","ENTITY TYPE","ENTITYTYPE",
+      "CLASS","CLASSNAME","OBJECTTYPE","OBJECT TYPE","COMMON TYPE","IFC CLASS","IFCCLASS"
+    ]);
+
+    const psets = (obj.properties || []);
+    const prioritized = [];
+    const others = [];
+
+    for (const ps of psets){
+      const n = normStr(ps.name).toLowerCase();
+      if (n.includes("reference object") || n === "ifc" || n.includes("component attributes")) prioritized.push(ps);
+      else others.push(ps);
+    }
+
+    const ordered = prioritized.concat(others);
+
+    for (const ps of ordered){
+      for (const p of (ps.properties || [])){
+        const pn = normStr(p.name).toUpperCase();
+        if (!wantedPropNames.has(pn)) continue;
+
+        const t = looksLikeIfcEntityName(p.value);
+        if (t) return t;
+      }
+    }
+
+    return "";
+  }
+
+  function isIgnoredIfcEntity(obj){
+    const t = getIfcEntityTypeFromObjectProps(obj);
+    if (t && IGNORE_TYPES.has(t)) return true;
+
+    for (const it of IGNORE_TYPES){
+      if (containsIfcTypeAnywhere(obj, it)) return true;
+    }
+    return false;
+  }
+  // ============================
+
+  async function scanProperties(){
+    if (!API){ showError("API ikke klar. Vent litt og prøv igjen."); return; }
+
+    clearCharts();
+    showError("");
+    availableProps = {};
+    els.loadButton.disabled = true;
+    els.colorizeButton.disabled = true;
+    els.resetButton.disabled = true;
+
+    els.status.textContent = "🔍 Skanner modell for Property Sets…";
+    setBusy(true);
+
+    try{
+      const models = await API.viewer.getObjects();
+      if (!models || !models.length){
+        els.status.textContent = ℹ️ Fant ingen objekter i visningen. Sørg for at modell(er) er innlastet.";
+        return;
+      }
+
+      for (const m of models){
+        const modelId = m.modelId || m.modelid || m["model Id"];
+        const objs = m.objects || [];
+        if (!modelId || !objs.length) continue;
+
+        const runtimeIds = objs.map(o => o.id);
+        if (!runtimeIds.length) continue;
+
+        const objProps = await API.viewer.getObjectProperties(modelId, runtimeIds);
+        for (const obj of objProps || []){
+          if (isIgnoredIfcEntity(obj)) continue;
+
+          for (const pset of obj.properties || []){
+            const name = pset.name || "";
+            if (!name) continue;
+            if (!availableProps[name]) availableProps[name] = new Set();
+            for (const p of pset.properties || []) if (p.name) availableProps[name].add(p.name);
+          }
+        }
+      }
+
+      const sel = els.psetSelect;
+      sel.innerHTML = '<option value="">(velg…)</option>';
+      const psetNames = Object.keys(availableProps);
+
+      if (!psetNames.length){
+        els.status.textContent = "ℹ️ Ingen Property Sets funnet (etter filtrering av root/container-objekter).";
+        sel.disabled = true;
+      } else {
+        psetNames.sort((a,b)=>a.localeCompare(b,"nb")).forEach(n => {
+          const opt = document.createElement("option");
+          opt.value = n;
+          opt.textContent = n;
+          sel.appendChild(opt);
+        });
+        sel.disabled = false;
+        els.status.textContent = "✅ Ferdig skannet – velg Property Set og huk av opptil 4 properties.";
+        els.loadButton.disabled = false;
+      }
+    }catch(e){
+      showError("Feil under skanning av egenskaper: " + (e && e.message ? e.message : e));
+      els.status.textContent = "❌ Klarte ikke å skanne egenskaper.";
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  // ===== IFC GlobalId (IFC GUID) via convertToObjectIds =====
+  const ifcIdCache = new Map();
+  async function getIfcGlobalIdCached(modelId, runtimeId){
+    const key = `${modelId}:${runtimeId}`;
+    if (ifcIdCache.has(key)) return ifcIdCache.get(key);
+
+    let v = "";
+    try{
+      const ids = await API.viewer.convertToObjectIds(modelId, [Number(runtimeId)]);
+      v = (ids && ids[0]) ? String(ids[0]) : "";
+    }catch(e){
+      v = "";
+    }
+    ifcIdCache.set(key, v);
+    return v;
+  }
+  // =========================================================
+
+  async function zoomToObject(modelId, runtimeId){
+    if (!API) return;
+    const selector = { modelObjectIds: [{ modelId, objectRuntimeIds: [Number(runtimeId)] }] };
+
+    try { await API.viewer.setSelection(selector, "set"); }
+    catch { try { await API.viewer.setSelection(selector, "replace"); } catch {} }
+
+    try{
+      await API.viewer.setCamera(selector, { animationTime: 650 });
+      els.status.textContent = `🎯 Zoomet til objekt (ModelId=${modelId}, RuntimeId=${runtimeId}).`;
+      showError("");
+    }catch(e){
+      showError("Klarte ikke å zoome til objektet: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  async function getPropertyData(psetName, propName){
+    const counts = { withValue: 0, withoutValue: 0 };
+    const selection = { withValue: {}, withoutValue: {} };
+    const details = { withValue: {}, withoutValue: {} };
+
+    const models = await API.viewer.getObjects();
+    if (!models || !models.length) return { counts, selection, details };
+
+    for (const m of models){
+      const modelId = m.modelId || m.modelid || m["model Id"];
+      const objs = m.objects || [];
+      if (!modelId || !objs.length) continue;
+
+      const runtimeIds = objs.map(o => o.id);
+      if (!runtimeIds.length) continue;
+
+      const objProps = await API.viewer.getObjectProperties(modelId, runtimeIds);
+
+      for (const obj of objProps || []){
+        if (isIgnoredIfcEntity(obj)) continue;
+
+        let hasProp = false;
+        let hasVal = false;
+        const psetProps = {};
+
+        for (const ps of obj.properties || []){
+          if (ps.name !== psetName) continue;
+
+          for (const p of ps.properties || []){
+            psetProps[p.name] = p.value;
+
+            if (p.name === propName){
+              hasProp = true;
+              const v = p.value;
+              if (v !== null && v !== undefined && String(v).trim() !== "") hasVal = true;
+            }
+          }
+        }
+
+        const key = (hasProp && hasVal) ? "withValue" : "withoutValue";
+        counts[key]++;
+
+        if (!selection[key][modelId]) selection[key][modelId] = [];
+        selection[key][modelId].push(obj.id);
+
+        const ifcGlobalId = await getIfcGlobalIdCached(modelId, obj.id);
+
+        const objectInfo = {
+          modelId,
+          runtimeId: obj.id,
+          name: obj.name || obj.objectName || "",
+          ifcGlobalId,
+          properties: psetProps
+        };
+
+        if (!details[key][modelId]) details[key][modelId] = [];
+        details[key][modelId].push(objectInfo);
+      }
+    }
+
+    return { counts, selection, details };
+  }
+
+  function escapeCSV(value){
+    if (value === null || value === undefined) return "";
+    const str = String(value);
+    if (/[;\n\r"]/.test(str)) return '"' + str.replace(/"/g,'""') + '"';
+    return str;
+  }
+
+  function validateIfcGuids(objects){
+    const missing = [];
+    const map = new Map();
+    for (const o of objects){
+      const g = (o.ifcGlobalId || "").trim();
+      if (!g){ missing.push(o); continue; }
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(o);
+    }
+    const duplicates = [];
+    for (const [guid, arr] of map.entries()){
+      if (arr.length > 1) duplicates.push({ guid, count: arr.length, objects: arr });
+    }
+    duplicates.sort((a,b)=>b.count-a.count);
+    return { missing, duplicates };
+  }
+
+  function formatValidationMessage(pset, prop, sliceLabel, missing, duplicates){
+    const lines = [];
+    lines.push(`⚠️ Validering før eksport (${sliceLabel})`);
+    lines.push(`Property Set: ${pset}`);
+    lines.push(`Property: ${prop}`);
+    lines.push("");
+    lines.push(`• Manglende IfcGlobalId: ${missing.length}`);
+    lines.push(`• Dupliserte IfcGlobalId (grupper): ${duplicates.length}`);
+    if (duplicates.length){
+      lines.push("");
+      lines.push("Topp duplikater:");
+      duplicates.slice(0,5).forEach(d => lines.push(`- ${d.guid}  (x${d.count})`));
+      if (duplicates.length > 5) lines.push(`... +${duplicates.length-5} flere`);
+    }
+    lines.push("");
+    lines.push("Vil du eksportere likevel?");
+    return lines.join("\n");
+  }
+
+  function exportSliceToCSV(pset, prop, sliceType, detailPerModel){
+    const objects = [];
+    for (const modelId in detailPerModel) (detailPerModel[modelId] || []).forEach(o => objects.push(o));
+    if (!objects.length){ showError("Ingen objekter å eksportere for valgt gruppe."); return; }
+
+    const sliceLabel = sliceType === "withValue" ? "Med verdi" : "Uten verdi";
+    const { missing, duplicates } = validateIfcGuids(objects);
+
+    if (missing.length || duplicates.length){
+      const msg = `Validering: ${missing.length} mangler GUID, ${duplicates.length} duplikat-grupper.`;
+      els.status.textContent = `⚠️ ${msg}`;
+      showError(msg);
+
+      const ok = window.confirm(formatValidationMessage(pset, prop, sliceLabel, missing, duplicates));
+      if (!ok){ els.status.textContent = "⛔ Eksport avbrutt."; return; }
+    } else {
+      showError("");
+    }
+
+    const allPropNamesSet = new Set();
+    objects.forEach(o => Object.keys(o.properties || {}).forEach(pn => allPropNamesSet.add(pn)));
+    const allPropNames = Array.from(allPropNamesSet).sort((a,b)=>a.localeCompare(b,"nb"));
+
+    const baseCols = ["#", "ModelId", "RuntimeId", "ObjectName", "IfcGlobalId", "GuidMissing", "GuidDuplicate", "SliceType", "PropertySet"];
+    const header = baseCols.concat(allPropNames);
+
+    const dupSet = new Set(duplicates.map(d => d.guid));
+
+    const rows = [];
+    rows.push(header.join(";"));
+
+    objects.forEach((o, index) => {
+      const guid = (o.ifcGlobalId || "").trim();
+      const row = {
+        "#": index + 1,
+        ModelId: o.modelId || "",
+        RuntimeId: o.runtimeId || "",
+        ObjectName: o.name || "",
+        IfcGlobalId: guid,
+        GuidMissing: guid ? "" : "YES",
+        GuidDuplicate: guid && dupSet.has(guid) ? "YES" : "",
+        SliceType: sliceLabel,
+        PropertySet: pset
+      };
+
+      allPropNames.forEach(pn => row[pn] = (o.properties && pn in o.properties) ? o.properties[pn] : "");
+      rows.push(header.map(col => escapeCSV(row[col])).join(";"));
+    });
+
+    const csvContent = rows.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().slice(0,10);
+    const sliceShort = sliceType === "withValue" ? "medVerdi" : "utenVerdi";
+    link.href = url;
+    link.download = `TC_${pset}_${prop}_${sliceShort}_${dateStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    els.status.textContent = `📤 Eksporterte ${objects.length} objekter til CSV (${sliceLabel}) for ${pset} → ${prop}.`;
+    showError("");
+  }
+
+  function buildLegend(missingCount, dupGroupCount){
+    const div = document.createElement("div");
+    div.className = "legend";
+    div.innerHTML = `
+      <span class="chip"><span class="dot missing"></span>Mangler GUID</span>
+      <span class="chip"><span class="dot dup"></span>Duplisert GUID</span>
+      <span style="margin-left:auto;">Feil: ${missingCount} mangler • ${dupGroupCount} duplikat-grupper</span>
+    `;
+    return div;
+  }
+
+  function buildDetailSection(pset, prop, sliceType, details, parent){
+    const detailPerModel = details[sliceType] || {};
+    const objects = [];
+    for (const modelId in detailPerModel) (detailPerModel[modelId] || []).forEach(o => objects.push(o));
+
+    const sliceLabel = sliceType === "withValue" ? "Med verdi" : "Uten verdi/mangler property";
+
+    const section = document.createElement("div");
+    section.className = "detail-section";
+
+    const title = document.createElement("div");
+    title.className = "detail-title";
+    title.textContent = sliceLabel;
+    section.appendChild(title);
+
+    const headerDiv = document.createElement("div");
+    headerDiv.className = "detail-header";
+
+    const left = document.createElement("div");
+    left.className = "detail-header-left";
+
+    const infoSpan = document.createElement("span");
+    const infoSmall = document.createElement("small");
+    infoSmall.textContent = "Klikk på en rad for å zoome til objektet. (Root/container-objekter er filtrert bort.)";
+
+    left.appendChild(infoSpan);
+    left.appendChild(infoSmall);
+    headerDiv.appendChild(left);
+
+    const actions = document.createElement("div");
+    actions.className = "detail-actions";
+
+    section.appendChild(headerDiv);
+
+    if (!objects.length){
+      infoSpan.textContent = "Ingen objekter i denne gruppen.";
+      const emptyDiv = document.createElement("div");
+      emptyDiv.className = "detail-empty";
+      emptyDiv.textContent = "Ingen objekt å vise for denne gruppen.";
+      section.appendChild(emptyDiv);
+      parent.appendChild(section);
+      return;
+    }
+
+    const { missing, duplicates } = validateIfcGuids(objects);
+    const dupSet = new Set(duplicates.map(d => d.guid));
+
+    const btnAll = document.createElement("button");
+    btnAll.className = "filter-btn active";
+    btnAll.type = "button";
+    btnAll.textContent = "Vis alle";
+
+    const btnIssues = document.createElement("button");
+    btnIssues.className = "filter-btn";
+    btnIssues.type = "button";
+    btnIssues.textContent = "Vis bare feil";
+
+    const exportBtn = document.createElement("button");
+    exportBtn.className = "export-btn";
+    exportBtn.type = "button";
+    exportBtn.innerHTML = "📤 Eksporter CSV";
+    exportBtn.onclick = () => exportSliceToCSV(pset, prop, sliceType, detailPerModel);
+
+    actions.appendChild(btnAll);
+    actions.appendChild(btnIssues);
+    actions.appendChild(exportBtn);
+    headerDiv.appendChild(actions);
+
+    section.appendChild(buildLegend(missing.length, duplicates.length));
+
+    const table = document.createElement("table");
+    table.className = "detail-table";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    ["#", "ModelId", "RuntimeId", "IfcGlobalId", "ObjectName", prop].forEach(col => {
+      const th = document.createElement("th");
+      th.textContent = col;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    function renderRows(showIssuesOnly){
+      tbody.innerHTML = "";
+      let shown = 0;
+
+      objects.forEach((o, index) => {
+        const guid = (o.ifcGlobalId || "").trim();
+        const isMissing = !guid;
+        const isDup = guid && dupSet.has(guid);
+
+        if (showIssuesOnly && !(isMissing || isDup)) return;
+
+        const tr = document.createElement("tr");
+        tr.classList.add("clickable-row");
+        if (isMissing) tr.classList.add("row-missing");
+        if (isDup) tr.classList.add("row-duplicate");
+
+        tr.addEventListener("click", async () => {
+          await zoomToObject(o.modelId, o.runtimeId);
+        });
+
+        const val = o.properties ? o.properties[prop] : "";
+        const cells = [
+          index + 1,
+          o.modelId || "",
+          o.runtimeId || "",
+          guid,
+          o.name || "",
+          (val !== undefined && val !== null) ? val : ""
+        ];
+
+        cells.forEach((c, i) => {
+          const td = document.createElement("td");
+          if (i === 3) td.className = "guid-cell";
+          td.textContent = c;
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+        shown++;
+      });
+
+      infoSpan.textContent = `Antall objekter: ${objects.length} • Viser: ${shown}` + (showIssuesOnly ? " (kun feil)" : "");
+    }
+
+    btnAll.onclick = () => {
+      btnAll.classList.add("active");
+      btnIssues.classList.remove("active");
+      renderRows(false);
+    };
+    btnIssues.onclick = () => {
+      btnIssues.classList.add("active");
+      btnAll.classList.remove("active");
+      renderRows(true);
+    };
+
+    renderRows(false);
+
+    table.appendChild(tbody);
+    section.appendChild(table);
+    parent.appendChild(section);
+  }
+
+  function showBothSlicesDetails(pset, prop, details, detailContainer){
+    detailContainer.innerHTML = "";
+    buildDetailSection(pset, prop, "withValue", details, detailContainer);
+    buildDetailSection(pset, prop, "withoutValue", details, detailContainer);
+  }
+
+  async function highlightSliceInModel(selection, sliceType){
+    if (!API) return;
+
+    const perModel = selection[sliceType] || {};
+    const modelObjectIds = [];
+    let totalObjects = 0;
+
+    for (const modelId in perModel){
+      const ids = perModel[modelId];
+      if (ids && ids.length){
+        modelObjectIds.push({ modelId, objectRuntimeIds: ids });
+        totalObjects += ids.length;
+      }
+    }
+
+    if (!modelObjectIds.length){
+      els.status.textContent = sliceType === "withValue"
+        ? "Ingen objekter med verdi å markere."
+        : "Ingen objekter uten verdi/mangler property å markere.";
+      return;
+    }
+
+    try{
+      await API.viewer.setSelection({ modelObjectIds }, "set");
+      els.status.textContent = sliceType === "withValue"
+        ? `🔎 Markerte ${totalObjects} objekter MED verdi i modellen.`
+        : `🔎 Markerte ${totalObjects} objekter UTEN verdi/mangler property i modellen.`;
+    }catch(e){
+      try { await API.viewer.setSelection({ modelObjectIds }, "replace"); } catch {}
+      showError("Feil ved markering av objekter: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  function createPieChart(pset, prop, counts, details, selection){
+    const total = counts.withValue + counts.withoutValue;
+
+    const card = document.createElement("div");
+    card.className = "chart-card";
+
+    const title = document.createElement("h3");
+    title.textContent = `${pset} → ${prop}`;
+    card.appendChild(title);
+
+    const canvas = document.createElement("canvas");
+    card.appendChild(canvas);
+
+    const summary = document.createElement("div");
+    summary.className = "chart-summary";
+
+    const pctWith = total ? ((counts.withValue/total)*100).toFixed(1) : "0.0";
+    const pctWithout = total ? ((counts.withoutValue/total)*100).toFixed(1) : "0.0";
+    summary.textContent =
+      `Totalt ${total} objekter • Med verdi: ${counts.withValue} (${pctWith} %) • ` +
+      `Uten verdi/mangler property: ${counts.withoutValue} (${pctWithout} %). ` +
+      `Klikk på et kakestykke for å markere objekter og vise tabeller.`;
+    card.appendChild(summary);
+
+    const detailContainer = document.createElement("div");
+    detailContainer.className = "detail-container";
+    card.appendChild(detailContainer);
+
+    els.chartsContainer.appendChild(card);
+
+    const chart = new Chart(canvas, {
+      type: "pie",
+      data: {
+        labels: ["Med verdi", "Uten verdi"],
+        datasets: [{
+          data: [counts.withValue, counts.withoutValue],
+          backgroundColor: [COLORS.withValue, COLORS.withoutValue],
+          borderColor: "#fff",
+          borderWidth: 4,
+          hoverOffset: 12
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "bottom", labels: { font: { size: 14 }, padding: 20, usePointStyle: true } },
+          tooltip: { callbacks: { label: ctx => {
+            const v = ctx.parsed;
+            const pct = total ? (v/total*100).toFixed(1) : 0;
+            return `${ctx.label}: ${pct}% (${v} objekter)`;
+          }}},
+          datalabels: {
+            formatter: value => {
+              const pct = total ? (value/total*100).toFixed(1) : 0;
+              return `${pct} %`;
+            },
+            color: "#fff",
+            font: { weight: "bold", size: 14 },
+            anchor: "center",
+            align: "center",
+            clamp: true,
+            clip: false
+          }
+        },
+        animation: { animateRotate: true, duration: 900 },
+        onClick: (event, elements) => {
+          if (!elements || !elements.length) return;
+          const sliceType = (elements[0].index === 0) ? "withValue" : "withoutValue";
+          highlightSliceInModel(selection, sliceType);
+          showBothSlicesDetails(pset, prop, details, detailContainer);
+        }
+      }
+    });
+
+    charts.push(chart);
+  }
+
+  async function loadAllCharts(){
+    if (!API){ showError("API ikke klar. Vent et øyeblikk og prøv igjen."); return; }
+
+    clearCharts();
+    showError("");
+
+    const pset = els.psetSelect.value;
+    if (!pset){ showError("Velg et Property Set først."); return; }
+
+    const selectedProps = [];
+    for (let i=1;i<=4;i++){
+      const cb = document.getElementById(`cb${i}`);
+      const sel = document.getElementById(`prop${i}`);
+      if (cb.checked && sel && sel.value) selectedProps.push(sel.value);
+    }
+    if (!selectedProps.length){ showError("Huk av minst én property for å lage kakediagram."); return; }
+
+    els.status.textContent = `📈 Laster ${selectedProps.length} kakediagram…`;
+    els.colorizeButton.disabled = true;
+    els.resetButton.disabled = true;
+    setBusy(true);
+
+    try{
+      for (const prop of selectedProps){
+        const { counts, selection, details } = await getPropertyData(pset, prop);
+        lastSelections.set(prop, selection);
+        createPieChart(pset, prop, counts, details, selection);
+      }
+
+      els.status.textContent =
+        `✅ ${selectedProps.length} kakediagram ferdig! Klikk på et kakestykke for å markere objekter ` +
+        `og vise tabeller (klikk på rad for zoom) og eksportere til CSV.`;
+      els.colorizeButton.disabled = false;
+      els.resetButton.disabled = false;
+    }catch(e){
+      showError("Feil ved henting av kakediagram: " + (e && e.message ? e.message : e));
+      els.status.textContent = "❌ Klarte ikke å generere kakediagram.";
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function colorizeAll(){
+    if (!API) return;
+    if (!lastSelections.size){ showError("Ingen aktive utvalg å fargelegge. Generer kakediagram først."); return; }
+
+    showError("");
+    els.status.textContent = "🎨 Fargelegger objekter i modellen…";
+    setBusy(true);
+
+    try{
+      await API.viewer.setObjectState(undefined, { color: "reset" });
+
+      for (const [, sel] of lastSelections){
+        for (const state of ["withValue","withoutValue"]){
+          const perModel = sel[state];
+          const list = [];
+          for (const modelId in perModel){
+            if (perModel[modelId].length) list.push({ modelId, objectRuntimeIds: perModel[modelId] });
+          }
+          if (!list.length) continue;
+
+          const rgba = state === "withValue"
+            ? { r:46, g:204, b:113, a:255 }
+            : { r:231, g:76, b:60, a:255 };
+
+          await API.viewer.setObjectState({ modelObjectIds: list }, { color: rgba });
+        }
+      }
+
+      els.status.textContent = "🎨 Alle valgte properties er fargelagt i modellen (grønn = med verdi, rød = uten verdi/mangler).";
+      els.resetButton.disabled = false;
+    }catch(e){
+      showError("Feil ved fargelegging: " + (e && e.message ? e.message : e));
+      els.status.textContent = "❌ Klarte ikke å fargelegge objekter.";
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function resetAll(){
+    if (!API) return;
+
+    setBusy(true);
+    showError("");
+    clearCharts();
+
+    try{
+      await API.viewer.setObjectState(undefined, { color: "reset" });
+      els.status.textContent = "🔄 Modellen er tilbakestilt til originalfarger.";
+    }catch(e){
+      showError("Feil ved tilbakestilling av modellfarger: " + (e && e.message ? e.message : e));
+      els.status.textContent = "❌ Klarte ikke å tilbakestille modellfarger.";
+    }finally{
+      els.colorizeButton.disabled = true;
+      els.resetButton.disabled = true;
+      els.loadButton.disabled = false;
+      setBusy(false);
+    }
+  }
+
+  cbIds.forEach((cbId, index) => {
+    const cb = document.getElementById(cbId);
+    const sel = document.getElementById(propSelectIds[index]);
+    cb.addEventListener("change", () => { if (!sel) return; if (!cb.checked) sel.value = ""; });
+  });
+
+  els.scanButton.onclick = scanProperties;
+  els.loadButton.onclick = loadAllCharts;
+  els.colorizeButton.onclick = colorizeAll;
+  els.resetButton.onclick = resetAll;
+
+  els.psetSelect.onchange = e => {
+    clearCharts();
+    showError("");
+    populatePropSelects(e.target.value);
+    els.colorizeButton.disabled = true;
+    els.resetButton.disabled = true;
+  };
+
+  connect();
+</script>
+</body>
+</html>
