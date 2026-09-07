@@ -3,5 +3,8 @@
   "title": "Norconsult BIM Tools",
   "icon": "https://trekasb.github.io/BIM_proto/bim-tools-icon.svg",
   "description": "Norconsult BIM-verktøy for Trimble Connect.",
-  "enabled": true
+  "extensionType": [
+    "project",
+    "3dviewer"
+  ]
 }
