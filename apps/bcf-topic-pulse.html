@@ -5,6 +5,22 @@
   <title>BCFTopicPulse</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+<script>
+async function BIMToolsConnect(target, onEvent, timeout){
+  try{
+    if(window.parent && window.parent !== window &&
+       window.parent.BIMToolsBridge &&
+       typeof window.parent.BIMToolsBridge.connect === "function"){
+      return await window.parent.BIMToolsBridge.connect(onEvent);
+    }
+  }catch(e){
+    console.warn("BIM Tools bridge unavailable, using direct Trimble connection.", e);
+  }
+  return TrimbleConnectWorkspace.connect(target, onEvent, timeout);
+}
+</script>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -445,7 +461,7 @@
 
   <header>
     <div class="logo-box">
-      <img src="../assets/norconsult-logo.svg" alt="Norconsult"
+      <img src="../assets/norconsult-logo-black.png" alt="Norconsult"
            onerror="this.style.display='none'; this.parentElement.textContent='Norconsult'; this.parentElement.style.fontWeight='800'; this.parentElement.style.fontSize='18px';">
     </div>
 
@@ -686,8 +702,6 @@
   </div>
 
   <script>
-function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&window.parent.BIMToolsBridge)?window.parent.BIMToolsBridge:null;}catch(e){return null;}}
-
     if (window.ChartDataLabels) Chart.register(ChartDataLabels);
 
     Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
@@ -1878,11 +1892,9 @@ function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&
       setStatus("Kobler til Trimble Connect…", true);
 
       try{
-        API = await (getBIMToolsBridge() ? getBIMToolsBridge().connect((event,args)=>{
+        API = await BIMToolsConnect(window.parent,(event,args)=>{
           if(event === "extension.accessToken") handleToken(args.data);
-        }) : TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
-          if(event === "extension.accessToken") handleToken(args.data);
-        }));
+        });
 
         const proj = await API.project.getCurrentProject();
         currentProjectId = proj.id;

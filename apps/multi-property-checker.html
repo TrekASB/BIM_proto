@@ -5,6 +5,22 @@
   <title>MultiProperty Checker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+<script>
+async function BIMToolsConnect(target, onEvent, timeout){
+  try{
+    if(window.parent && window.parent !== window &&
+       window.parent.BIMToolsBridge &&
+       typeof window.parent.BIMToolsBridge.connect === "function"){
+      return await window.parent.BIMToolsBridge.connect(onEvent);
+    }
+  }catch(e){
+    console.warn("BIM Tools bridge unavailable, using direct Trimble connection.", e);
+  }
+  return TrimbleConnectWorkspace.connect(target, onEvent, timeout);
+}
+</script>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
@@ -102,7 +118,7 @@
 <body>
 <header>
   <div class="title-container">
-    <img src="../assets/norconsult-logo.svg" alt="Norconsult logo" class="logo">
+    <img src="../assets/norconsult-logo-black.png" alt="Norconsult logo" class="logo">
     <div class="title-block">
       <h1 class="title">MultiProperty Checker</h1>
       <div class="org">Norconsult Norge</div>
@@ -152,8 +168,6 @@
 </main>
 
 <script>
-function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&window.parent.BIMToolsBridge)?window.parent.BIMToolsBridge:null;}catch(e){return null;}}
-
   let API = null;
   let availableProps = {};
   let charts = [];
@@ -192,7 +206,7 @@ function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&
 
   async function connect(){
     try{
-      API = await (getBIMToolsBridge() ? getBIMToolsBridge().connect(() => {}) : TrimbleConnectWorkspace.connect(window.parent, () => {}, 30000));
+      API = await BIMToolsConnect(window.parent, () => {}, 30000);
       els.status.textContent = "✅ Tilkoblet – trykk «Oppdater liste» for å hente Property Sets.";
       els.scanButton.disabled = false;
     }catch(e){
@@ -347,7 +361,7 @@ function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&
     try{
       const models = await API.viewer.getObjects();
       if (!models || !models.length){
-        els.status.textContent = "ℹ️ Fant ingen objekter i visningen. Sørg for at modell(er) er innlastet.";
+        els.status.textContent = ℹ️ Fant ingen objekter i visningen. Sørg for at modell(er) er innlastet.";
         return;
       }
 
