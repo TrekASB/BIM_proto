@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BIM Tools – Trimble Connect</title>
+<title>Norconsult BIM-tools – Trimble Connect</title>
 <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 <style>
 :root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--danger:#b42318;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -31,8 +31,8 @@ body{display:flex;flex-direction:column}
 </head>
 <body>
 <header class="top">
-  <img class="logo" src="assets/norconsult-logo.svg" alt="Norconsult">
-  <div class="title"><h1>BIM Tools</h1><p>Norconsult Norge · Trimble Connect Project Extension</p></div>
+  <img class="logo" src="assets/norconsult-logo-black.png" alt="Norconsult">
+  <div class="title"><h1>Norconsult BIM-tools</h1><p><strong>Developed by Norconsult, (AI-assisted development).</strong><br>Kontaktperson: Edin.Dzakmic@norconsult.com</p></div>
   <div class="status"><span id="statusText">Kobler til Trimble Connect…</span><span id="statusDot" class="dot"></span></div>
 </header>
 
@@ -50,7 +50,7 @@ body{display:flex;flex-direction:column}
   <div class="home" id="home">
     <div class="intro">
       <h2>Verktøykasse for modellbasert samhandling</h2>
-      <p>Du kan nå åpne flere verktøy samtidig. Hvert verktøy får sin egen fane og fortsetter å kjøre når du bytter fane. Lukk et verktøy med × i fanen.</p>
+      <p>Du kan åpne flere verktøy samtidig. Hvert verktøy får sin egen fane og fortsetter å kjøre når du bytter fane. Lukk et verktøy med × i fanen.</p>
     </div>
     <div class="grid">
       <section class="card"><span class="tag">Kart / lokasjon</span><h3>MiniMap E39</h3><p>2D-kart med kamera-/posisjonssynk, kartgrunnlag, FKB/WMS, Street View og NTM7.</p><button class="btn" onclick="openTool('minimap','MiniMap E39','apps/minimap-e39.html')">Åpne MiniMap</button></section>
@@ -161,15 +161,20 @@ function closeTool(id){
     API = await window.BIMToolsBridge.ready;
     window.BIMToolsBridge.api = API;
 
-    await API.ui.setMenu({
-      title: 'Norconsult BIM Tools',
-      icon: 'https://trekasb.github.io/BIM_proto/assets/bim-tools-icon.svg?v=3',
-      command: 'BIM_TOOLS_HOME'
-    });
+    try{
+      await API.ui.setMenu({
+        title: 'Norconsult BIM Tools',
+        icon: 'https://trekasb.github.io/BIM_proto/assets/bim-tools-icon.svg?v=4',
+        command: 'BIM_TOOLS_HOME'
+      });
+    }catch(menuError){
+      console.warn("Kunne ikke oppdatere Trimble-menyen:", menuError);
+    }
 
     document.getElementById('statusText').textContent='Tilkoblet Trimble Connect';
     document.getElementById('statusDot').classList.add('ok');
   }catch(e){
+    console.error(e);
     document.getElementById('statusText').textContent='Forhåndsvisning / ikke tilkoblet';
   }
 })();

@@ -29,3 +29,10 @@ Verktøyene åpnes med vanlig navigasjon (`window.location.href`) og ikke i en e
 `MiniMap_E39_NTM7.json` i originalmaterialet hadde ugyldig JSON (duplisert `icon` og manglende komma). Denne prototypen bruker derfor en ny, gyldig felles `manifest.json`.
 
 Logoen i `assets/../assets/norconsult-logo-black.png` er en enkel lokal plassholder/wordmark for prototypen. Bytt den med godkjent Norconsult-logo før produksjonsbruk.
+
+## Multi-app vinduer / faner
+
+Denne versjonen støtter flere åpne BIM-verktøy samtidig. Hvert verktøy åpnes i en egen fane,
+kan aktiveres uten å lastes på nytt, og kan lukkes med ×. Verktøyene bruker en felles
+BIMToolsBridge mot Trimble Connect når de kjører inne i hovedappen, men kan fortsatt åpnes
+som selvstendige extensions.
