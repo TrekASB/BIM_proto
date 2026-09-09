@@ -1,9 +1,7 @@
 {
-  "title": "Norconsult BIM Tools",
-  "url": "https://DITT-DOMENE/index.html",
-  "icon": "https://DITT-DOMENE/assets/norconsult-logo-black.png",
-  "description": "Norconsult BIM Tools for Trimble Connect",
-  "extensionType": [
-    "3dviewer"
-  ]
+  "url": "https://YOUR-HOST.example.com/index.html",
+  "title": "BIM Tools",
+  "icon": "https://YOUR-HOST.example.com/assets/bim-tools-icon.svg",
+  "description": "Norconsult BIM-verktøy for Trimble Connect.",
+  "enabled": true
 }

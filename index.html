@@ -6,173 +6,25 @@
 <title>BIM Tools – Trimble Connect</title>
 <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 <style>
-:root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--danger:#b42318;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
-body{display:flex;flex-direction:column}
-.top{height:82px;flex:0 0 82px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:8px 14px}
-.logo{width:145px;height:58px;object-fit:contain;border:1px solid var(--border);border-radius:10px;padding:6px}
-.title h1{margin:0;color:var(--blue);font-size:20px}.title p{margin:3px 0 0;color:var(--muted);font-size:12px}
-.status{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}.dot{width:9px;height:9px;border-radius:50%;background:#98a2b3}.dot.ok{background:var(--green);box-shadow:0 0 8px rgba(24,134,75,.4)}
-.toolbar{height:48px;flex:0 0 48px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:6px 10px}
-.toolbtn,.homebtn{border:1px solid var(--border);background:#fff;color:var(--text);font-weight:700;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px}.toolbtn:hover,.homebtn:hover{border-color:var(--blue);color:var(--blue)}
-.homebtn{color:var(--blue)}
-.tabs{height:42px;flex:0 0 42px;background:#eef2f6;border-bottom:1px solid var(--border);display:flex;align-items:end;gap:4px;padding:4px 8px 0;overflow-x:auto}
-.tab{height:34px;border:1px solid var(--border);border-bottom:0;background:#f8fafc;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:8px;padding:0 8px 0 11px;cursor:pointer;white-space:nowrap;font-size:12px;font-weight:700;color:#475467}
-.tab.active{background:#fff;color:var(--blue);border-color:#b8c7da}.tab .close{border:0;background:transparent;color:#667085;font-size:17px;line-height:1;cursor:pointer;padding:1px 3px;border-radius:4px}.tab .close:hover{background:#fee4e2;color:var(--danger)}
-.workspace{position:relative;flex:1;min-height:0;background:#fff}
-.home{position:absolute;inset:0;overflow:auto;background:var(--bg);padding:22px}
-.intro{max-width:1200px;margin:0 auto 16px}.intro h2{margin:0 0 6px;font-size:18px}.intro p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
-.grid{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(16,24,40,.06);display:flex;flex-direction:column;min-height:180px}.card h3{margin:0 0 8px;color:var(--blue)}.card p{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.45;flex:1}.tag{font-size:11px;font-weight:700;background:#edf4ff;color:var(--blue);border-radius:999px;padding:4px 8px;align-self:flex-start;margin-bottom:12px}.btn{border:0;background:var(--blue);color:white;font-weight:800;border-radius:9px;padding:10px 12px;cursor:pointer}.btn:hover{filter:brightness(.95)}
-.appframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}.appframe.active{display:block}
-.emptytabs{font-size:11px;color:#667085;padding:0 4px 9px}
-@media(max-width:850px){.title p{display:none}.logo{width:120px}.toolbtn{padding:7px 8px;font-size:11px}.toolbar{overflow-x:auto}}
+:root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);min-height:100vh}.top{height:104px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:12px 20px}.logo{width:170px;height:70px;object-fit:contain;border:1px solid var(--border);border-radius:12px;padding:8px}.title h1{margin:0;color:var(--blue);font-size:22px}.title p{margin:4px 0 0;color:var(--muted);font-size:13px}.status{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}.dot{width:9px;height:9px;border-radius:50%;background:#98a2b3}.dot.ok{background:var(--green);box-shadow:0 0 8px rgba(24,134,75,.4)}main{padding:24px;max-width:1250px;margin:auto}.intro{margin-bottom:18px}.intro h2{margin:0 0 6px;font-size:18px}.intro p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(16,24,40,.06);display:flex;flex-direction:column;min-height:200px}.card h3{margin:0 0 8px;color:var(--blue)}.card p{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.45;flex:1}.tag{font-size:11px;font-weight:700;background:#edf4ff;color:var(--blue);border-radius:999px;padding:4px 8px;align-self:flex-start;margin-bottom:14px}.btn{border:0;background:var(--blue);color:white;font-weight:800;border-radius:9px;padding:10px 12px;cursor:pointer}.btn:hover{filter:brightness(.95)}footer{padding:18px 24px;color:var(--muted);font-size:11px;text-align:center}
 </style>
 </head>
 <body>
-<header class="top">
-  <img class="logo" src="assets/norconsult-logo.svg" alt="Norconsult">
-  <div class="title"><h1>BIM Tools</h1><p>Norconsult Norge · Trimble Connect Project Extension</p></div>
-  <div class="status"><span id="statusText">Kobler til Trimble Connect…</span><span id="statusDot" class="dot"></span></div>
-</header>
-
-<div class="toolbar">
-  <button class="homebtn" onclick="showHome()">⌂ Hjem</button>
-  <button class="toolbtn" onclick="openTool('minimap','MiniMap E39','apps/minimap-e39.html')">MiniMap</button>
-  <button class="toolbtn" onclick="openTool('label','PropertyLabel','apps/multi-property-label.html')">PropertyLabel</button>
-  <button class="toolbtn" onclick="openTool('checker','PropertyChecker','apps/multi-property-checker.html')">PropertyChecker</button>
-  <button class="toolbtn" onclick="openTool('bcf','BCFTopicPulse','apps/bcf-topic-pulse.html')">BCFTopicPulse</button>
+<header class="top"><img class="logo" src="assets/norconsult-logo-black.png" alt="Norconsult"><div class="title"><h1>BIM Tools</h1><p>Norconsult Norge · Trimble Connect Project Extension</p></div><div class="status"><span id="statusText">Kobler til Trimble Connect…</span><span id="statusDot" class="dot"></span></div></header>
+<main>
+<div class="intro"><h2>Verktøykasse for modellbasert samhandling</h2><p>Velg verktøy. Det åpnes i samme Trimble Connect-panel slik at eksisterende Workspace API-kobling fungerer direkte mot aktivt prosjekt og 3D-visning.</p></div>
+<div class="grid">
+<section class="card"><span class="tag">Kart / lokasjon</span><h3>MiniMap E39</h3><p>2D-kart med kamera-/posisjonssynk, kartgrunnlag, FKB/WMS, Street View og NTM7.</p><button class="btn" onclick="openTool('apps/minimap-e39.html')">Åpne MiniMap</button></section>
+<section class="card"><span class="tag">Egenskaper / påskrift</span><h3>MultiPropertyLabel</h3><p>Velg Property Sets og properties, klikk objekter i 3D og vis påskrift, objektliste og CSV-eksport.</p><button class="btn" onclick="openTool('apps/multi-property-label.html')">Åpne PropertyLabel</button></section>
+<section class="card"><span class="tag">Kvalitetskontroll</span><h3>MultiPropertyChecker</h3><p>Kontroller egenskapsutfylling, vis diagrammer, marker mangler/duplikater og zoom til objekter.</p><button class="btn" onclick="openTool('apps/multi-property-checker.html')">Åpne PropertyChecker</button></section>
+<section class="card"><span class="tag">BCF / oppfølging</span><h3>BCFTopicPulse</h3><p>Dashboard for BCF-emner med KPI-er, filtre, tabeller og diagrammer for prosjektoppfølging.</p><button class="btn" onclick="openTool('apps/bcf-topic-pulse.html')">Åpne BCFTopicPulse</button></section>
 </div>
-
-<div class="tabs" id="tabs"><span class="emptytabs" id="emptyTabs">Ingen apper åpne</span></div>
-
-<div class="workspace" id="workspace">
-  <div class="home" id="home">
-    <div class="intro">
-      <h2>Verktøykasse for modellbasert samhandling</h2>
-      <p>Du kan nå åpne flere verktøy samtidig. Hvert verktøy får sin egen fane og fortsetter å kjøre når du bytter fane. Lukk et verktøy med × i fanen.</p>
-    </div>
-    <div class="grid">
-      <section class="card"><span class="tag">Kart / lokasjon</span><h3>MiniMap E39</h3><p>2D-kart med kamera-/posisjonssynk, kartgrunnlag, FKB/WMS, Street View og NTM7.</p><button class="btn" onclick="openTool('minimap','MiniMap E39','apps/minimap-e39.html')">Åpne MiniMap</button></section>
-      <section class="card"><span class="tag">Egenskaper / påskrift</span><h3>MultiPropertyLabel</h3><p>Velg Property Sets og properties, klikk objekter i 3D og vis påskrift, objektliste og CSV-eksport.</p><button class="btn" onclick="openTool('label','PropertyLabel','apps/multi-property-label.html')">Åpne PropertyLabel</button></section>
-      <section class="card"><span class="tag">Kvalitetskontroll</span><h3>MultiPropertyChecker</h3><p>Kontroller egenskapsutfylling, vis diagrammer, marker mangler/duplikater og zoom til objekter.</p><button class="btn" onclick="openTool('checker','PropertyChecker','apps/multi-property-checker.html')">Åpne PropertyChecker</button></section>
-      <section class="card"><span class="tag">BCF / oppfølging</span><h3>BCFTopicPulse</h3><p>Dashboard for BCF-emner med KPI-er, filtre, tabeller og diagrammer for prosjektoppfølging.</p><button class="btn" onclick="openTool('bcf','BCFTopicPulse','apps/bcf-topic-pulse.html')">Åpne BCFTopicPulse</button></section>
-    </div>
-  </div>
-</div>
-
+</main>
+<footer>Developed by Norconsult · AI-assisted development · Prototype</footer>
 <script>
 let API=null;
-const bridgeSubscribers = new Set();
-window.BIMToolsBridge = {
-  api: null,
-  ready: null,
-  connect(onEvent){
-    if(typeof onEvent === 'function') bridgeSubscribers.add(onEvent);
-    return this.ready;
-  },
-  disconnect(onEvent){
-    if(typeof onEvent === 'function') bridgeSubscribers.delete(onEvent);
-  }
-};
-const apps=new Map();
-let activeId=null;
-
-function updateEmptyTabs(){
-  document.getElementById('emptyTabs').style.display=apps.size?'none':'inline';
-}
-function deactivateAll(){
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.appframe').forEach(x=>x.classList.remove('active'));
-}
-function showHome(){
-  activeId=null;
-  deactivateAll();
-  document.getElementById('home').style.display='block';
-}
-function activateTool(id){
-  const app=apps.get(id);
-  if(!app)return;
-  activeId=id;
-  document.getElementById('home').style.display='none';
-  deactivateAll();
-  app.tab.classList.add('active');
-  app.frame.classList.add('active');
-}
-function openTool(id,title,path){
-  if(apps.has(id)){activateTool(id);return;}
-  const tabs=document.getElementById('tabs');
-  const workspace=document.getElementById('workspace');
-
-  const tab=document.createElement('div');
-  tab.className='tab';
-  tab.dataset.id=id;
-  const label=document.createElement('span');
-  label.textContent=title;
-  const close=document.createElement('button');
-  close.className='close';
-  close.type='button';
-  close.title='Lukk '+title;
-  close.setAttribute('aria-label','Lukk '+title);
-  close.textContent='×';
-  tab.appendChild(label);
-  tab.appendChild(close);
-  tab.addEventListener('click',()=>activateTool(id));
-  close.addEventListener('click',(e)=>{e.stopPropagation();closeTool(id);});
-
-  const frame=document.createElement('iframe');
-  frame.className='appframe';
-  frame.dataset.id=id;
-  frame.src=path;
-  frame.title=title;
-  frame.allow='clipboard-read; clipboard-write';
-
-  tabs.appendChild(tab);
-  workspace.appendChild(frame);
-  apps.set(id,{tab,frame,title,path});
-  updateEmptyTabs();
-  activateTool(id);
-}
-function closeTool(id){
-  const app=apps.get(id);
-  if(!app)return;
-  const wasActive=activeId===id;
-  app.frame.src='about:blank';
-  app.frame.remove();
-  app.tab.remove();
-  apps.delete(id);
-  updateEmptyTabs();
-  if(wasActive){
-    const next=Array.from(apps.keys()).pop();
-    if(next)activateTool(next);else showHome();
-  }
-}
-
-(async()=>{
-  try{
-    window.BIMToolsBridge.ready = TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
-      if(event === 'extension.command' && args && args.data === 'BIM_TOOLS_HOME'){
-        showHome();
-      }
-      for(const cb of [...bridgeSubscribers]){
-        try{ cb(event,args); }catch(e){ console.error("BIMToolsBridge event error",e); }
-      }
-    },30000);
-    API = await window.BIMToolsBridge.ready;
-    window.BIMToolsBridge.api = API;
-
-    await API.ui.setMenu({
-      title: 'Norconsult BIM Tools',
-      icon: 'https://trekasb.github.io/BIM_proto/assets/bim-tools-icon.svg?v=3',
-      command: 'BIM_TOOLS_HOME'
-    });
-
-    document.getElementById('statusText').textContent='Tilkoblet Trimble Connect';
-    document.getElementById('statusDot').classList.add('ok');
-  }catch(e){
-    document.getElementById('statusText').textContent='Forhåndsvisning / ikke tilkoblet';
-  }
-})();
+function openTool(path){ window.location.href=path; }
+(async()=>{try{API=await TrimbleConnectWorkspace.connect(window.parent,()=>{},30000);document.getElementById('statusText').textContent='Tilkoblet Trimble Connect';document.getElementById('statusDot').classList.add('ok');}catch(e){document.getElementById('statusText').textContent='Forhåndsvisning / ikke tilkoblet';}})();
 </script>
-</body>
-</html>
+</body></html>
