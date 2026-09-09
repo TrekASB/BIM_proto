@@ -1,7 +1,9 @@
 {
-  "url": "https://trekasb.github.io/BIM_proto/index.html",
   "title": "Norconsult BIM Tools",
-  "icon": "https://trekasb.github.io/BIM_proto/assets/bim-tools-icon.svg",
-  "description": "Norconsult BIM-verktøy for Trimble Connect.",
-  "extensionType": ["project"]
+  "url": "https://DITT-DOMENE/index.html",
+  "icon": "https://DITT-DOMENE/assets/norconsult-logo-black.png",
+  "description": "Norconsult BIM Tools for Trimble Connect",
+  "extensionType": [
+    "3dviewer"
+  ]
 }
