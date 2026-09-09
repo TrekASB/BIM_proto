@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8" />
+  <title>MultiPropertyLabel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+<script>
+async function BIMToolsConnect(target, onEvent, timeout){
+  try{
+    if(window.parent && window.parent !== window &&
+       window.parent.BIMToolsBridge &&
+       typeof window.parent.BIMToolsBridge.connect === "function"){
+      return await window.parent.BIMToolsBridge.connect(onEvent);
+    }
+  }catch(e){
+    console.warn("BIM Tools bridge unavailable, using direct Trimble connection.", e);
+  }
+  return TrimbleConnectWorkspace.connect(target, onEvent, timeout);
+}
+</script>
+
+
+  <style>
+    :root{
+      --primary:#0069d9; --danger:#e74c3c; --success:#28a745; --warn:#f59e0b;
+      --border:#e5e7eb; --bg:#f5f7fa; --card:#fff; --muted:#6b7280;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    body{margin:0;background:var(--bg);color:#111827;min-height:100vh;display:flex;flex-direction:column;}
+    header{display:flex;align-items:center;gap:14px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--border);}
+    .logoWrap{
+      width:92px;height:92px;border:1px solid #eee;border-radius:12px;background:#fff;
+      display:flex;align-items:center;justify-content:center;overflow:hidden;
+      box-shadow:0 1px 3px rgba(15,23,42,.08);flex:0 0 auto;
+    }
+    .logoWrap img{width:84px;height:84px;object-fit:contain;display:block;}
+
+    .titleBlock{display:flex;flex-direction:column;gap:2px;}
+    .title{font-weight:900;font-size:18px;color:var(--primary);line-height:1.1;}
+    .org{font-size:13px;font-weight:700;color:#111827;line-height:1.1;}
+    .dev{font-size:12px;color:var(--muted);font-style:italic;line-height:1.1;}
+    .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+    .status{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;}
+
+    main{padding:12px;display:grid;gap:12px;grid-template-columns:1fr;}
+    @media (min-width: 1100px){ main{grid-template-columns: 1.15fr .85fr; align-items:start;} }
+
+    .card{
+      background:var(--card);border:1px solid rgba(229,231,235,.7);border-radius:14px;
+      box-shadow:0 1px 3px rgba(15,23,42,.06);padding:12px;
+    }
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .row.space{justify-content:space-between;}
+    .muted{color:var(--muted);font-size:12px;}
+    #error{color:#b91c1c;font-size:12px;white-space:pre-wrap;margin-top:8px;min-height:14px;}
+
+    .grid3{display:grid;gap:10px;grid-template-columns:1fr;}
+    @media (min-width: 720px) and (max-width: 1099px){ .grid3{grid-template-columns:1fr 1fr 1fr;} }
+
+    .psetBox{background:#fafafa;border:1px solid #eef2f7;border-radius:12px;padding:10px;}
+    .psetHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+    .psetHead b{font-size:13px;}
+    .tag{font-size:11px;color:var(--muted);background:#fff;border:1px solid #e5e7eb;padding:4px 8px;border-radius:999px;}
+
+    label{font-weight:800;font-size:12px;display:block;margin-top:8px;}
+    select,button{width:100%;padding:9px 10px;border-radius:10px;border:1px solid #d1d5db;background:#fff;font-size:13px;}
+    select:disabled{background:#f3f4f6;color:#9ca3af;}
+    button{border:none;color:#fff;font-weight:900;cursor:pointer;}
+    #scanBtn{background:var(--success);}
+    #clearBtn{background:var(--danger);}
+    #csvBtn{background:var(--primary);}
+    #resetListBtn{background:var(--warn); color:#111827;}
+    button:disabled{opacity:.6;cursor:not-allowed;}
+
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top;}
+    th{background:#f8fafc;position:sticky;top:0;z-index:1;}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;}
+    tr.clickable{cursor:pointer;}
+    tr.clickable:hover td{background:#eef6ff;}
+    .scroll{max-height:560px;overflow:auto;border:1px solid #eef2f7;border-radius:12px;margin-top:10px;}
+
+    .hint{margin-top:10px;line-height:1.5;}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:11px;color:var(--muted);}
+    .pill b{color:#111827;}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="logoWrap">
+    <img src="../assets/norconsult-logo-black.png"
+         alt="Norconsult"
+         onerror="this.style.display='none'; this.parentElement.textContent='Norconsult'; this.parentElement.style.fontWeight='900';">
+  </div>
+
+  <div class="titleBlock">
+    <div class="title">MultiPropertyLabel</div>
+    <div class="org">Norconsult Norge</div>
+    <div class="dev">Developed by Edin Dzakmic, Norconsult, (AI-assisted development)</div>
+    <div class="sub">Velg Pset + properties → klikk objekter i 3D (multi) → påskrift + liste + CSV</div>
+  </div>
+
+  <div class="status" id="status">Kobler til Trimble Connect…</div>
+</header>
+
+<main>
+  <div class="card">
+    <div class="row space">
+      <div class="row" style="gap:8px;align-items:center;">
+        <span class="pill">Filtrer bort: <b>IFCPROJECT</b> / <b>IFCSITE</b> / <b>IFCBUILDING</b> / <b>IFCBUILDINGSTOREY</b></span>
+        <span class="pill">Klikk i 3D = <b>toggle</b> inn/ut av liste</span>
+        <span class="pill">Ctrl/Shift i TC = <b>multi-select</b></span>
+      </div>
+
+      <div class="row" style="gap:8px;">
+        <button id="scanBtn" disabled style="width:auto;padding:10px 12px;">🔄 Oppdater liste</button>
+        <button id="csvBtn" disabled style="width:auto;padding:10px 12px;">📤 Eksporter CSV</button>
+        <button id="resetListBtn" disabled style="width:auto;padding:10px 12px;">🗑️ Tøm liste</button>
+        <button id="clearBtn" disabled style="width:auto;padding:10px 12px;">🧹 Fjern påskrift</button>
+      </div>
+    </div>
+
+    <div id="error"></div>
+
+    <div class="grid3" style="margin-top:10px;">
+      <div class="psetBox">
+        <div class="psetHead"><b>Pset A</b><span class="tag">opptil 4 properties</span></div>
+        <label>Property Set</label>
+        <select id="psetA" disabled><option value="">(velg…)</option></select>
+        <label>Property 1</label><select id="a1" disabled><option value="">(velg…)</option></select>
+        <label>Property 2</label><select id="a2" disabled><option value="">(velg…)</option></select>
+        <label>Property 3</label><select id="a3" disabled><option value="">(velg…)</option></select>
+        <label>Property 4</label><select id="a4" disabled><option value="">(velg…)</option></select>
+      </div>
+
+      <div class="psetBox">
+        <div class="psetHead"><b>Pset B</b><span class="tag">opptil 4 properties</span></div>
+        <label>Property Set</label>
+        <select id="psetB" disabled><option value="">(velg…)</option></select>
+        <label>Property 1</label><select id="b1" disabled><option value="">(velg…)</option></select>
+        <label>Property 2</label><select id="b2" disabled><option value="">(velg…)</option></select>
+        <label>Property 3</label><select id="b3" disabled><option value="">(velg…)</option></select>
+        <label>Property 4</label><select id="b4" disabled><option value="">(velg…)</option></select>
+      </div>
+
+      <div class="psetBox">
+        <div class="psetHead"><b>Pset C</b><span class="tag">opptil 4 properties</span></div>
+        <label>Property Set</label>
+        <select id="psetC" disabled><option value="">(velg…)</option></select>
+        <label>Property 1</label><select id="c1" disabled><option value="">(velg…)</option></select>
+        <label>Property 2</label><select id="c2" disabled><option value="">(velg…)</option></select>
+        <label>Property 3</label><select id="c3" disabled><option value="">(velg…)</option></select>
+        <label>Property 4</label><select id="c4" disabled><option value="">(velg…)</option></select>
+      </div>
+    </div>
+
+    <div class="muted hint">
+      Tips: Slå på <b>Markups/Annotations</b> i viewer for å se tekst.<br>
+      <b>NB:</b> Markup API lar oss ikke styre font/size direkte. For å unngå overlapp ved zoom ut, gjør vi teksten <b>kortere</b> automatisk (færre linjer).
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row space">
+      <b>Valgte objekter (liste for eksport)</b>
+      <span class="muted" id="countInfo">0</span>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:52px;">#</th>
+            <th style="width:220px;">Objektnavn</th>
+            <th style="width:240px;">IfcGlobalId (GUID)</th>
+            <th>Påskrift</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="4" class="muted">Klikk objekter i modellen for å legge dem i listen.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  let API = null;
+  let availableProps = {};
+  const ifcGuidCache = new Map();
+
+  let lastMarkupIds = [];
+  const picked = new Map(); // key modelId:runtimeId -> {modelId,runtimeId,name,guid,fullText,compactText}
+
+  const IGNORE_TYPES = new Set(["IFCPROJECT","IFCSITE","IFCBUILDING","IFCBUILDINGSTOREY"]);
+
+  // Guards: løser "Tøm liste" -> gamle objekter popper tilbake
+  let lastSelectionSnapshot = "";
+  let lastProgrammaticSnapshot = "";
+  let selectionLockUntil = 0;
+  let selectionLockDepth = 0;
+
+  let refreshRunId = 0;
+  let camDebounce = null;
+
+  // Zoom-ut terskel for å korte ned tekst (ikke "auto-komprimer toggle" – alltid aktivt)
+  const COMPACT_DISTANCE_M = 120;
+
+  const els = {
+    status: document.getElementById("status"),
+    error: document.getElementById("error"),
+    scanBtn: document.getElementById("scanBtn"),
+    clearBtn: document.getElementById("clearBtn"),
+    csvBtn: document.getElementById("csvBtn"),
+    resetListBtn: document.getElementById("resetListBtn"),
+    countInfo: document.getElementById("countInfo"),
+    tbody: document.getElementById("tbody"),
+    psetA: document.getElementById("psetA"),
+    psetB: document.getElementById("psetB"),
+    psetC: document.getElementById("psetC"),
+    a: [document.getElementById("a1"),document.getElementById("a2"),document.getElementById("a3"),document.getElementById("a4")],
+    b: [document.getElementById("b1"),document.getElementById("b2"),document.getElementById("b3"),document.getElementById("b4")],
+    c: [document.getElementById("c1"),document.getElementById("c2"),document.getElementById("c3"),document.getElementById("c4")]
+  };
+
+  function nowMs(){ return Date.now(); }
+  function lockSelectionFor(ms){ selectionLockUntil = Math.max(selectionLockUntil, nowMs() + ms); }
+  function isSelectionLocked(){ return selectionLockDepth > 0 || nowMs() < selectionLockUntil; }
+
+  async function withSelectionSuppressed(fn, msAfter = 350){
+    selectionLockDepth++;
+    try{ await fn(); }
+    finally{
+      selectionLockDepth = Math.max(0, selectionLockDepth - 1);
+      lockSelectionFor(msAfter);
+    }
+  }
+
+  function setStatus(msg){ els.status.textContent = msg; }
+  function setError(msg){ els.error.textContent = msg || ""; }
+
+  function norm(v){ return (v===null || v===undefined) ? "" : String(v).trim(); }
+
+  function escHtml(s){
+    return String(s||"")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  }
+
+  function escapeCSV(value){
+    if (value === null || value === undefined) return "";
+    const str = String(value);
+    if (/[;\n\r"]/.test(str)) return '"' + str.replace(/"/g,'""') + '"';
+    return str;
+  }
+
+  function psetNameOf(ps){ return norm(ps?.name || ps?.set || ""); }
+
+  function getIfcType(objProps){
+    const direct = norm(objProps?.ifcType || objProps?.ifcEntity || objProps?.entityType || objProps?.type);
+    return direct ? direct.toUpperCase() : "";
+  }
+
+  function isIgnored(objProps){
+    const t = getIfcType(objProps);
+    if (t && IGNORE_TYPES.has(t)) return true;
+    const n = norm(objProps?.name || objProps?.objectName).toUpperCase();
+    for (const it of IGNORE_TYPES){
+      if (n === it || n.includes(it)) return true;
+    }
+    return false;
+  }
+
+  function guessObjectName(objProps){
+    const direct = norm(objProps?.name || objProps?.objectName || objProps?.displayName);
+    if (direct) return direct;
+
+    for (const ps of (objProps?.properties || [])){
+      for (const p of (ps.properties || [])){
+        const pn = norm(p.name).toLowerCase();
+        if (pn === "objektnavn" || pn.includes("objektnavn") || pn === "name"){
+          const v = norm(p.value);
+          if (v) return v;
+        }
+      }
+    }
+    return "";
+  }
+
+  async function getIfcGuid(modelId, runtimeId){
+    const key = `${modelId}:${runtimeId}`;
+    if (ifcGuidCache.has(key)) return ifcGuidCache.get(key);
+
+    let v = "";
+    try{
+      const ids = await API.viewer.convertToObjectIds(modelId, [Number(runtimeId)]);
+      v = (ids && ids[0]) ? String(ids[0]) : "";
+    }catch(e){ v=""; }
+
+    ifcGuidCache.set(key, v);
+    return v;
+  }
+
+  function resetPropSelects(list){
+    for (const sel of list){
+      sel.innerHTML = '<option value="">(velg…)</option>';
+      sel.disabled = true;
+    }
+  }
+
+  function fillPsetSelect(sel, psetNames){
+    sel.innerHTML = '<option value="">(velg…)</option>';
+    for (const n of psetNames){
+      const opt = document.createElement("option");
+      opt.value = n;
+      opt.textContent = n;
+      sel.appendChild(opt);
+    }
+    sel.disabled = false;
+  }
+
+  function fillPropSelects(propSelects, props){
+    for (const sel of propSelects){
+      sel.innerHTML = '<option value="">(velg…)</option>';
+      for (const p of props){
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        sel.appendChild(opt);
+      }
+      sel.disabled = false;
+    }
+  }
+
+  function onPsetChanged(psetSel, propSelects){
+    resetPropSelects(propSelects);
+    const pset = norm(psetSel.value);
+    if (!pset) return;
+
+    const props = Array.from(availableProps[pset] || []).sort((a,b)=>a.localeCompare(b,"nb"));
+    fillPropSelects(propSelects, props);
+    refreshFromPicked();
+  }
+
+  function getConfig(){
+    const blocks = [
+      { key:"A", pset: norm(els.psetA.value), props: els.a.map(s => norm(s.value)).filter(Boolean) },
+      { key:"B", pset: norm(els.psetB.value), props: els.b.map(s => norm(s.value)).filter(Boolean) },
+      { key:"C", pset: norm(els.psetC.value), props: els.c.map(s => norm(s.value)).filter(Boolean) }
+    ];
+
+    const out = [];
+    for (const b of blocks){
+      if (!b.pset || !b.props.length) continue;
+      const seen = new Set();
+      const props = [];
+      for (const p of b.props){
+        if (seen.has(p)) continue;
+        seen.add(p);
+        props.push(p);
+      }
+      out.push({ key: b.key, pset: b.pset, props });
+    }
+    return out;
+  }
+
+  function findValue(objProps, psetName, propName){
+    for (const ps of (objProps?.properties || [])){
+      if (psetNameOf(ps) !== psetName) continue;
+      for (const p of (ps.properties || [])){
+        if (norm(p.name) === propName) return p.value;
+      }
+    }
+    return undefined;
+  }
+
+  function buildFullText(config, objProps){
+    const lines = [];
+    for (const block of config){
+      const hasPset = (objProps.properties || []).some(x => psetNameOf(x) === block.pset);
+      if (!hasPset) continue;
+
+      const chunk = [];
+      for (const prop of block.props){
+        const v = findValue(objProps, block.pset, prop);
+        const vs = norm(v);
+        if (vs) chunk.push(`${prop}: ${vs}`);
+      }
+      if (chunk.length){
+        lines.push(block.pset);
+        lines.push(...chunk);
+        lines.push("");
+      }
+    }
+    while (lines.length && norm(lines[lines.length-1]) === "") lines.pop();
+    return lines.join("\n");
+  }
+
+  // Zoom-ut: kortere tekst (færre linjer) for å redusere overlapp
+  function buildCompactText(config, objProps){
+    const lines = [];
+    for (const block of config){
+      const hasPset = (objProps.properties || []).some(x => psetNameOf(x) === block.pset);
+      if (!hasPset) continue;
+
+      let firstLine = null;
+      for (const prop of block.props){
+        const v = findValue(objProps, block.pset, prop);
+        const vs = norm(v);
+        if (vs){ firstLine = `${prop}: ${vs}`; break; }
+      }
+      if (firstLine){
+        lines.push(block.pset);
+        lines.push(firstLine);
+      }
+    }
+    return lines.slice(0, 4).join("\n");
+  }
+
+  async function getCameraDistanceMeters(){
+    try{
+      if (!API?.viewer?.getCamera) return null;
+      const cam = await API.viewer.getCamera();
+      if (!cam) return null;
+
+      const pos = cam.position || cam.eye || cam.cameraPosition;
+      const tgt = cam.target || cam.lookAt || cam.cameraTarget;
+      if (!pos || !tgt) return null;
+
+      const dx = (pos.x - tgt.x), dy = (pos.y - tgt.y), dz = (pos.z - tgt.z);
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      return Number.isFinite(dist) ? dist : null;
+    }catch(e){ return null; }
+  }
+
+  async function isZoomedOut(){
+    const dist = await getCameraDistanceMeters();
+    if (!dist || !Number.isFinite(dist)) return true; // hvis ukjent, antar zoom ut
+    return dist > COMPACT_DISTANCE_M;
+  }
+
+  function scheduleRebuildMarkupsOnly(){
+    if (camDebounce) clearTimeout(camDebounce);
+    camDebounce = setTimeout(async () => { await rebuildMarkupsOnly(); }, 220);
+  }
+
+  async function clearMarkups(){
+    try{
+      if (API?.markup?.removeMarkups && lastMarkupIds.length){
+        await API.markup.removeMarkups(lastMarkupIds.slice());
+      }
+    }catch(e){
+      console.warn("removeMarkups feilet:", e);
+    }finally{
+      lastMarkupIds = [];
+      els.clearBtn.disabled = true;
+    }
+  }
+
+  // Spre labels litt (anti-overlapp)
+  function staggerOffsetMm(index){
+    const step = 140; // mm
+    const side = 120; // mm
+    const row = index % 6;
+    const col = Math.floor(index / 6) % 2;
+    return { dy: row * step, dx: (col === 0 ? -side : side) * (row % 2 ? 1 : -1), dz: 0 };
+  }
+
+  async function addTextMarkupOverObject(modelId, runtimeId, text, indexForStagger){
+    if (!API?.markup?.addTextMarkup) throw new Error("MarkupAPI ikke tilgjengelig (addTextMarkup).");
+
+    const boxes = await API.viewer.getObjectBoundingBoxes(modelId, [runtimeId]);
+    if (!boxes || !boxes.length || !boxes[0]?.boundingBox) return null;
+
+    const bb = boxes[0].boundingBox;
+    const min = bb.min, max = bb.max;
+
+    const cx_mm = ((min.x + max.x) / 2) * 1000;
+    const cz_mm = ((min.z + max.z) / 2) * 1000;
+    const topY_mm = (max.y) * 1000;
+
+    const st = staggerOffsetMm(indexForStagger || 0);
+
+    const start = {
+      positionX: cx_mm + st.dx,
+      positionY: topY_mm + 80 + st.dy,
+      positionZ: cz_mm + st.dz,
+      modelId, objectId: runtimeId
+    };
+    const end = {
+      positionX: cx_mm + st.dx,
+      positionY: topY_mm + 520 + st.dy,
+      positionZ: cz_mm + st.dz,
+      modelId, objectId: runtimeId
+    };
+
+    const created = await API.markup.addTextMarkup([{
+      start, end, text,
+      color: { r: 0, g: 0, b: 204, a: 255 }
+    }]);
+
+    if (created && created.length && typeof created[0].id === "number") return created[0].id;
+    return null;
+  }
+
+  function selectionToSnapshot(sel){
+    const parts = [];
+    for (const s of (sel||[])){
+      const ids = (s.objectRuntimeIds||[]).slice().sort((a,b)=>a-b);
+      parts.push(`${s.modelId}:${ids.join(",")}`);
+    }
+    return parts.sort().join("|");
+  }
+
+  async function setViewerSelectionSafe(modelObjectIds, msAfter=450){
+    lastProgrammaticSnapshot = selectionToSnapshot((modelObjectIds||[]).map(x => ({
+      modelId: x.modelId,
+      objectRuntimeIds: x.objectRuntimeIds
+    })));
+
+    await withSelectionSuppressed(async () => {
+      try{ await API.viewer.setSelection({ modelObjectIds }, "replace"); }
+      catch(e){ console.warn("setSelection feilet:", e); }
+    }, msAfter);
+  }
+
+  async function syncViewerSelectionFromPicked(){
+    const byModel = new Map();
+    for (const item of picked.values()){
+      if (!byModel.has(item.modelId)) byModel.set(item.modelId, []);
+      byModel.get(item.modelId).push(Number(item.runtimeId));
+    }
+    const modelObjectIds = [];
+    for (const [modelId, ids] of byModel.entries()){
+      modelObjectIds.push({ modelId, objectRuntimeIds: ids });
+    }
+    await setViewerSelectionSafe(modelObjectIds, 450);
+  }
+
+  function updateButtonsAndTableEmpty(){
+    els.countInfo.textContent = String(picked.size);
+    els.csvBtn.disabled = picked.size === 0;
+    els.resetListBtn.disabled = picked.size === 0;
+
+    if (picked.size === 0){
+      els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Klikk objekter i modellen for å legge dem i listen.</td></tr>`;
+    }
+  }
+
+  async function rebuildMarkupsOnly(){
+    if (!picked.size){
+      await clearMarkups();
+      updateButtonsAndTableEmpty();
+      return;
+    }
+
+    const myRun = ++refreshRunId;
+
+    try{
+      const zoomedOut = await isZoomedOut();
+
+      await clearMarkups();
+      if (myRun !== refreshRunId) return;
+
+      let idx = 0;
+      let made = 0;
+
+      for (const it of picked.values()){
+        if (myRun !== refreshRunId) return;
+
+        const text = zoomedOut ? (it.compactText || it.fullText || "") : (it.fullText || "");
+        if (!norm(text)) continue;
+
+        const mid = await addTextMarkupOverObject(it.modelId, Number(it.runtimeId), text, idx++);
+        if (mid != null){ lastMarkupIds.push(mid); made++; }
+      }
+
+      els.clearBtn.disabled = !lastMarkupIds.length;
+      setStatus(zoomedOut ? `Zoom ut: kortere tekst. Påskrifter: ${made}.` : `Zoom inn: full tekst. Påskrifter: ${made}.`);
+    }catch(e){
+      console.error(e);
+      setError("Klarte ikke å bygge om påskrifter: " + (e.message || e));
+    }
+  }
+
+  async function refreshFromPicked(){
+    const myRun = ++refreshRunId;
+
+    try{
+      setError("");
+      const config = getConfig();
+      if (!config.length){
+        setStatus("Velg minst ett Property Set og minst én property. Deretter klikk objekter i 3D.");
+        return;
+      }
+
+      if (!picked.size){
+        await clearMarkups();
+        updateButtonsAndTableEmpty();
+        setStatus("Ingen objekt i listen.");
+        return;
+      }
+
+      setStatus(`Oppdaterer ${picked.size} objekter…`);
+
+      const perModel = new Map();
+      for (const it of picked.values()){
+        if (!perModel.has(it.modelId)) perModel.set(it.modelId, []);
+        perModel.get(it.modelId).push(Number(it.runtimeId));
+      }
+
+      for (const [modelId, rids] of perModel.entries()){
+        if (myRun !== refreshRunId) return;
+
+        const propsArr = await API.viewer.getObjectProperties(modelId, rids);
+        if (myRun !== refreshRunId) return;
+
+        for (let i=0;i<rids.length;i++){
+          const rid = rids[i];
+          const objProps = propsArr?.[i];
+          if (!objProps) continue;
+          if (isIgnored(objProps)) continue;
+
+          const name = guessObjectName(objProps);
+          const guid = await getIfcGuid(modelId, rid);
+
+          const fullText = buildFullText(config, objProps);
+          const compactText = buildCompactText(config, objProps);
+
+          const key = `${modelId}:${rid}`;
+          const store = picked.get(key);
+          if (store){
+            store.name = name;
+            store.guid = guid;
+            store.fullText = fullText;
+            store.compactText = compactText;
+          }
+        }
+      }
+
+      if (myRun !== refreshRunId) return;
+
+      const rows = [];
+      let idx = 1;
+      for (const it of picked.values()){
+        rows.push(`
+          <tr class="clickable" data-m="${escHtml(it.modelId)}" data-r="${escHtml(it.runtimeId)}">
+            <td>${idx++}</td>
+            <td>${escHtml(it.name || "")}</td>
+            <td class="mono">${escHtml(it.guid || "")}</td>
+            <td style="white-space:pre-wrap;">${escHtml(it.fullText || "")}</td>
+          </tr>
+        `);
+      }
+      els.tbody.innerHTML = rows.join("") || `<tr><td colspan="4" class="muted">Ingen påskrift ble laget (mangler verdier / filtrert bort).</td></tr>`;
+      els.countInfo.textContent = String(picked.size);
+
+      els.tbody.querySelectorAll("tr.clickable").forEach(tr => {
+        tr.addEventListener("click", async () => {
+          const modelId = tr.getAttribute("data-m");
+          const rid = tr.getAttribute("data-r");
+          await withSelectionSuppressed(async () => {
+            try{ await API.viewer.setSelection({ modelObjectIds: [{ modelId, objectRuntimeIds: [Number(rid)] }] }, "replace"); }catch{}
+            try{ await API.viewer.setCamera({ modelObjectIds: [{ modelId, objectRuntimeIds: [Number(rid)] }] }, { animationTime: 650 }); }catch{}
+          }, 250);
+        });
+      });
+
+      await rebuildMarkupsOnly();
+
+      els.csvBtn.disabled = picked.size === 0;
+      els.resetListBtn.disabled = picked.size === 0;
+    }catch(e){
+      console.error(e);
+      if (myRun === refreshRunId){
+        setError("Oppdateringsfeil: " + (e.message || e));
+        setStatus("Kunne ikke oppdatere påskrifter.");
+      }
+    }
+  }
+
+  async function exportCSV(){
+    if (!picked.size){ setError("Ingen objekter i listen å eksportere."); return; }
+
+    await refreshFromPicked();
+
+    const config = getConfig();
+    const configText = config.map(b => `${b.pset} -> ${b.props.join(", ")}`).join(" | ");
+
+    const header = ["#", "ModelId", "RuntimeId", "ObjectName", "IfcGlobalId", "Config", "LabelTextFull", "LabelTextCompact"];
+    const rows = [header.join(";")];
+
+    let i = 1;
+    for (const it of picked.values()){
+      rows.push([
+        i++,
+        it.modelId || "",
+        it.runtimeId || "",
+        it.name || "",
+        it.guid || "",
+        configText,
+        (it.fullText || "").replace(/\r?\n/g, "\\n"),
+        (it.compactText || "").replace(/\r?\n/g, "\\n")
+      ].map(escapeCSV).join(";"));
+    }
+
+    const csvContent = rows.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().slice(0,10);
+    link.href = url;
+    link.download = `TC_MultiPropertyLabel_ValgteObjekter_${dateStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setStatus(`📤 Eksporterte ${picked.size} objekter til CSV.`);
+    setError("");
+  }
+
+  async function resetPickedList(){
+    setError("");
+    refreshRunId++;
+    lockSelectionFor(1200);
+
+    await clearMarkups();
+    picked.clear();
+    updateButtonsAndTableEmpty();
+
+    lastSelectionSnapshot = "";
+    lastProgrammaticSnapshot = "";
+
+    await setViewerSelectionSafe([], 900);
+    setStatus("🗑️ Listen er tømt (tabell + selection + påskrift).");
+  }
+
+  async function handleSelectionChanged(selection){
+    if (isSelectionLocked()) return;
+
+    const snap = selectionToSnapshot(selection);
+    if (snap && snap === lastProgrammaticSnapshot){
+      lastSelectionSnapshot = snap;
+      return;
+    }
+    if (snap === lastSelectionSnapshot) return;
+    lastSelectionSnapshot = snap;
+
+    const keys = [];
+    for (const s of (selection || [])){
+      for (const rid of (s.objectRuntimeIds || [])){
+        keys.push(`${s.modelId}:${rid}`);
+      }
+    }
+    if (!keys.length) return;
+
+    // 1 objekt: toggle
+    if (keys.length === 1){
+      const key = keys[0];
+      if (picked.has(key)) picked.delete(key);
+      else {
+        const [modelId, runtimeId] = key.split(":");
+        picked.set(key, { modelId, runtimeId });
+      }
+      await syncViewerSelectionFromPicked();
+      await refreshFromPicked();
+      return;
+    }
+
+    // Multi: sett listen lik selection
+    picked.clear();
+    for (const s of selection){
+      for (const rid of (s.objectRuntimeIds || [])){
+        const key = `${s.modelId}:${rid}`;
+        picked.set(key, { modelId: s.modelId, runtimeId: rid });
+      }
+    }
+
+    await syncViewerSelectionFromPicked();
+    await refreshFromPicked();
+  }
+
+  async function scanPsets(){
+    try{
+      setError("");
+      setStatus("Skanner modell for Property Sets…");
+
+      availableProps = {};
+      resetPropSelects(els.a); resetPropSelects(els.b); resetPropSelects(els.c);
+      [els.psetA, els.psetB, els.psetC].forEach(s => { s.innerHTML = '<option value="">(velg…)</option>'; s.disabled = true; });
+
+      const models = await API.viewer.getObjects();
+      if (!models || !models.length){ setStatus("Fant ingen modeller/objekter i viewer."); return; }
+
+      for (const m of models){
+        const modelId = m.modelId || m.modelid || m["model Id"];
+        const objs = m.objects || [];
+        if (!modelId || !objs.length) continue;
+
+        const ids = objs.slice(0, 1500).map(o => o.id);
+        const propsArr = await API.viewer.getObjectProperties(modelId, ids);
+
+        for (const objProps of (propsArr || [])){
+          if (!objProps) continue;
+          if (isIgnored(objProps)) continue;
+
+          for (const ps of (objProps.properties || [])){
+            const psetName = psetNameOf(ps);
+            if (!psetName) continue;
+
+            if (!availableProps[psetName]) availableProps[psetName] = new Set();
+            for (const p of (ps.properties || [])){
+              const pn = norm(p.name);
+              if (pn) availableProps[psetName].add(pn);
+            }
+          }
+        }
+      }
+
+      const psetNames = Object.keys(availableProps).sort((a,b)=>a.localeCompare(b,"nb"));
+      if (!psetNames.length){ setStatus("Fant ingen Property Sets (etter filtrering)."); return; }
+
+      fillPsetSelect(els.psetA, psetNames);
+      fillPsetSelect(els.psetB, psetNames);
+      fillPsetSelect(els.psetC, psetNames);
+
+      setStatus("Ferdig skannet. Velg Pset/properties og klikk objekter i 3D (multi).");
+    }catch(e){
+      console.error(e);
+      setError("Skann-feil: " + (e.message || e));
+      setStatus("Kunne ikke skanne.");
+    }
+  }
+
+  function onWorkspaceEvent(event, payload){
+    const ev = (event || "").toLowerCase();
+
+    if (ev.includes("selection")){
+      const sel = (payload && payload.data) ? payload.data : [];
+      handleSelectionChanged(sel);
+      return;
+    }
+
+    if (ev.includes("camera")){
+      scheduleRebuildMarkupsOnly();
+      return;
+    }
+  }
+
+  async function connect(){
+    try{
+      API = await BIMToolsConnect(window.parent, onWorkspaceEvent, 30000);
+
+      els.scanBtn.disabled = false;
+      els.clearBtn.disabled = false;
+      setStatus("✅ Tilkoblet. Trykk «Oppdater liste» for å fylle Pset/Property.");
+
+      // Poll kamera (for å korte ned tekst ved zoom ut)
+      setInterval(async () => {
+        if (!picked.size) return;
+        scheduleRebuildMarkupsOnly();
+      }, 1200);
+    }catch(e){
+      console.error(e);
+      setError("Kunne ikke koble til Trimble Connect: " + (e.message || e));
+      setStatus("❌ Feil ved tilkobling.");
+    }
+  }
+
+  // UI wiring
+  els.scanBtn.addEventListener("click", scanPsets);
+  els.csvBtn.addEventListener("click", exportCSV);
+  els.resetListBtn.addEventListener("click", resetPickedList);
+  els.clearBtn.addEventListener("click", async () => {
+    await clearMarkups();
+    setStatus("🧹 Påskrift fjernet (listen beholdes).");
+  });
+
+  els.psetA.addEventListener("change", () => onPsetChanged(els.psetA, els.a));
+  els.psetB.addEventListener("change", () => onPsetChanged(els.psetB, els.b));
+  els.psetC.addEventListener("change", () => onPsetChanged(els.psetC, els.c));
+
+  [...els.a, ...els.b, ...els.c].forEach(sel => sel.addEventListener("change", refreshFromPicked));
+
+  connect();
+</script>
+</body>
+</html>
+
+

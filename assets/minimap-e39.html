@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8" />
+<title>MiniMap E39 – Trimble Connect</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+<script>
+async function BIMToolsConnect(target, onEvent, timeout){
+  try{
+    if(window.parent && window.parent !== window &&
+       window.parent.BIMToolsBridge &&
+       typeof window.parent.BIMToolsBridge.connect === "function"){
+      return await window.parent.BIMToolsBridge.connect(onEvent);
+    }
+  }catch(e){
+    console.warn("BIM Tools bridge unavailable, using direct Trimble connection.", e);
+  }
+  return TrimbleConnectWorkspace.connect(target, onEvent, timeout);
+}
+</script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<style>
+:root{--bg:#f7f9fc;--panel:#ffffff;--panel2:#f3f6fb;--border:#d8e0ee;--text:#121826;--muted:#667085;--blue:#0050b5;--accent:#00a3d9;--ok:#22a06b;--warn:#f79009;--bad:#d92d20;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}body{height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:var(--text);user-select:none}.topbar{height:92px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:10px 18px;flex:0 0 auto}.logo-card{width:145px;height:68px;border:1px solid var(--border);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(16,24,40,.08);overflow:hidden}.logo-card img{max-width:128px;max-height:50px;object-fit:contain}.app-title{display:flex;flex-direction:column;line-height:1.2}.app-title b{font-size:18px;color:#0050b5}.app-title span{font-size:14px;font-weight:600}.app-title em{font-size:12px;color:#667085}.status{margin-left:auto;display:flex;align-items:center;gap:7px;color:#667085;font-size:12px}.dot{width:9px;height:9px;border-radius:50%;background:#98a2b3}.dot.live{background:var(--ok);box-shadow:0 0 8px var(--ok)}.dot.warn{background:var(--warn)}.dot.error{background:var(--bad)}#mapWrap{position:relative;flex:1;min-height:0}#gmap{position:absolute;inset:0}.toolbar{position:absolute;top:10px;left:10px;z-index:500;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 8px 28px rgba(16,24,40,.16);width:min(730px,calc(100% - 20px));display:flex;flex-direction:column;gap:7px}.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.mini-sel,.mini-input{height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:12px;padding:0 8px;min-width:120px}.wms-url{min-width:290px;flex:3}.wms-layer{min-width:145px;flex:1}.wms-row,.fkb-row{display:none}.wms-row.show,.fkb-row.show{display:flex}.fkb-layer{min-width:290px;flex:2}.mini-sel.crs{min-width:250px;flex:2}.mini-sel.model{min-width:210px;flex:2}.btn{height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:#101828;font-size:12px;font-weight:800;padding:0 10px;cursor:pointer}.btn:hover{background:#eef6ff;border-color:#93c5fd}.btn.primary{background:#0050b5;color:#fff;border-color:#0050b5}.btn.active{background:#e0f2fe;border-color:#00a3d9;color:#0050b5}.checks{display:flex;gap:13px;align-items:center;color:#667085;font-size:11px;flex-wrap:wrap}.checks label{display:flex;align-items:center;gap:5px}.checks input{accent-color:#0050b5}.badge{font-size:11px;color:#667085;margin-left:auto}.corner{position:absolute;right:12px;top:12px;z-index:520;display:flex;gap:8px;align-items:flex-start}.level{background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:9px;padding:6px 10px;font-size:12px;font-weight:800;color:#0050b5;box-shadow:0 6px 22px rgba(16,24,40,.12)}#compass{width:46px;height:46px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:50%;box-shadow:0 6px 22px rgba(16,24,40,.12)}.controls{position:absolute;right:12px;bottom:12px;z-index:520;display:flex;flex-direction:column;gap:5px}.ctrl{width:34px;height:34px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:18px;font-weight:900;box-shadow:0 4px 16px rgba(16,24,40,.12)}.info{height:45px;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);background:#fff;flex:0 0 auto}.cell{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--border)}.cell:last-child{border-right:0}.lab{font-size:10px;color:#667085;font-weight:800;text-transform:uppercase}.val{font-size:13px;color:#0050b5;font-weight:900;font-variant-numeric:tabular-nums;max-width:95%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.panel{position:absolute;top:102px;left:50%;transform:translateX(-50%);z-index:900;width:min(680px,calc(100% - 22px));background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 18px 60px rgba(16,24,40,.22);display:none}.panel.show{display:block}.panel h3{font-size:15px;color:#0050b5;margin-bottom:5px}.hint{font-size:12px;color:#667085;line-height:1.45;margin-bottom:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:flex;flex-direction:column;gap:4px}.field label{font-size:11px;color:#667085;font-weight:800}.field input,.field select{height:32px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.toast{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);z-index:1000;background:rgba(16,24,40,.94);color:#fff;border-radius:9px;padding:8px 13px;font-size:12px;opacity:0;transition:.25s}.toast.show{opacity:1}.camera-icon{width:48px;height:48px;position:relative;transform-origin:24px 24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}.camera-icon:before{content:"";position:absolute;left:7px;top:0;border-left:17px solid transparent;border-right:17px solid transparent;border-bottom:44px solid #fff;opacity:.98}.camera-icon:after{content:"";position:absolute;left:10px;top:4px;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:37px solid #E53935;opacity:.98}.model-label{font-size:11px;font-weight:900;color:#000;text-shadow:0 1px 4px #fff;white-space:nowrap}.leaflet-interactive{outline:none}.leaflet-container{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.hidden{display:none!important}
+.title-container{display:flex;align-items:center;gap:14px}.title-container .logo{width:145px;max-height:58px;object-fit:contain}.title-block{display:flex;flex-direction:column;line-height:1.18}.title{font-size:20px;color:#0050b5;margin:0;font-weight:900}.org{font-size:14px;font-weight:700;color:#121826}.dev{font-size:12px;color:#667085}.topbar .title-container{min-width:0}
+
+.toolbar{width:min(650px,calc(100% - 20px));padding:10px;gap:8px;border-radius:14px;backdrop-filter:blur(8px)}
+.toolbar .row:first-child{padding-bottom:7px;border-bottom:1px solid var(--border)}
+.section-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:78px}
+.mini-sel{flex:1;min-width:220px}
+.options-row{padding-top:2px;border-top:1px solid #eef2f6}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.btn.primary{margin-left:auto}
+.badge{line-height:1.25}
+.info{height:52px}
+.cell{min-width:0;padding:0 8px}
+.val{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.context-stack{position:absolute;right:12px;top:70px;z-index:530;width:270px;display:flex;flex-direction:column;gap:8px}
+.context-card{background:rgba(255,255,255,.97);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(16,24,40,.16);overflow:hidden}
+.context-head{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid #edf1f6;font-size:12px;font-weight:900;color:var(--blue)}
+.context-head button{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-weight:900}
+.context-body{padding:9px 10px;font-size:11px;line-height:1.4;color:var(--muted)}
+.context-body b{display:block;color:var(--text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta-grid{display:grid;grid-template-columns:70px 1fr;gap:5px 8px}.meta-grid span:nth-child(odd){font-weight:800;color:var(--muted)}.meta-grid span:nth-child(even){color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media(max-width:900px){.context-stack{top:auto;bottom:54px;right:8px;width:230px}.context-card:not(.open){display:none}}
+
+@media(max-width:980px){.toolbar{width:min(560px,calc(100% - 20px))}.toolbar .badge{margin-left:0}.section-label{min-width:100%}}
+@media(max-width:760px){.topbar{height:82px;padding:8px}.logo-card{width:120px;height:58px}.app-title b{font-size:15px}.app-title span{font-size:12px}.app-title em{display:none}.toolbar{width:calc(100% - 20px)}.mini-sel.crs{min-width:100%;}.info{grid-template-columns:repeat(2,1fr);height:70px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="title-container">
+    <img src="../assets/norconsult-logo-black.png" alt="Norconsult logo" class="logo">
+    <div class="title-block">
+      <h1 class="title">MiniMap E39</h1>
+      <div class="org">Norconsult Norge</div>
+      <div class="dev">Developed by Edin.Dzakmic@norconsult.com, Norconsult, (AI-assisted development)</div>
+    </div>
+  </div>
+  <div class="status"><span id="statusText">Starter…</span><span id="statusDot" class="dot"></span></div>
+</header>
+<div id="mapWrap">
+  <div id="gmap"></div>
+  <div class="toolbar">
+    <div class="row">
+      <button id="centerCamera" class="btn" title="Sentrer kartet på kameraet">⌖ Sentrer</button>
+      <button id="followBtn" class="btn active" title="Følg kameraet automatisk">● Følg kamera</button>
+      <button id="streetViewBtn" class="btn" title="Åpne Google Street View i ny fane">Street View ↗</button>
+      <button id="configBtn" class="btn primary" title="Fast prosjektsystem">EPSG:5107</button>
+    </div>
+    <div class="row">
+      <span class="section-label">Kartgrunnlag</span><select id="mapLayer" class="mini-sel">
+        <option value="arcgis_flyfoto">Flyfoto – Esri World Imagery</option>
+        <option value="osm">Vektorkart – OpenStreetMap</option>
+        <option value="grunnkart">Kartverket Norges grunnkart (WMS)</option>
+        <option value="kv_topo">Kartverket topo (WMTS)</option>
+        <option value="kv_gray">Kartverket gråtone (WMTS)</option>
+        <option value="kv_raster">Kartverket raster (WMTS)</option>
+        <option value="wms_fkb">Kartverket FKB (WMS)</option>
+        <option value="google_sat">Google ortofoto</option>
+        <option value="google_hybrid">Google hybrid</option>
+        <option value="wms_custom">Egen WMS</option>
+      </select>
+      <span class="badge" style="font-weight:900;color:#0050b5">CRS: Norway/EUREF89NTM | NTM Zone 7 | EPSG:5107</span>
+      <span class="badge">Akser: X=øst, Y=nord</span>
+    </div>
+    <div id="fkbRow" class="row fkb-row">
+      <select id="fkbLayerSelect" class="mini-sel fkb-layer" title="Velg FKB-lag fra Kartverket WMS">
+        <option value="fkb">Alle FKB-lag</option>
+      </select>
+      <button id="refreshFkbLayers" class="btn" title="Hent lagliste fra Kartverkets GetCapabilities">Hent FKB-lag</button>
+      <span class="badge">FKB WMS: velg lag og zoom nærmere enn ca. 1:12 000</span>
+    </div>
+    <div id="wmsRow" class="row wms-row">
+      <input id="wmsUrl" class="mini-input wms-url" placeholder="Lim inn WMS URL..." title="WMS URL">
+      <input id="wmsLayers" class="mini-input wms-layer" placeholder="Lagnavn" title="WMS-lag">
+      <button id="applyWms" class="btn">Legg til</button>
+      <span class="badge">Egen WMS legges som transparent kartlag</span>
+    </div>
+    <div class="checks options-row">
+      <label><input type="checkbox" id="showFOV" checked> Synsfelt</label>
+      <label><input type="checkbox" id="clickMove" checked> Klikk i kart flytter kamera</label>
+      <span class="badge">Fast CRS: EUREF89 NTM7 (EPSG:5107) · Høyde: NN2000</span>
+    </div>
+  </div>
+  <div class="corner"><div id="levelBadge" class="level">NN2000 Z: –</div><svg id="compass" viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="#fff" stroke="#d8e0ee"/><polygon id="compassNeedle" points="24,5 28,24 24,20 20,24" fill="#0050b5"/><polygon id="compassNeedleS" points="24,43 20,24 24,28 28,24" fill="#98a2b3"/><text x="24" y="14" text-anchor="middle" font-size="7" font-weight="900" fill="#0050b5">N</text></svg></div>
+  <div class="context-stack">
+    <section class="context-card open" id="modelCard"><div class="context-head">▣ Modellinformasjon<button data-toggle="modelCard">−</button></div><div class="context-body meta-grid"><span>Prosjekt</span><span id="ctxProject">Henter…</span><span>Modell</span><span id="ctxModel">Henter…</span><span>Revisjon</span><span id="ctxRevision">–</span><span>Oppdatert</span><span id="ctxUpdated">–</span></div></section>
+  </div>
+  <div class="controls"><button id="zoomIn" class="ctrl">+</button><button id="zoomOut" class="ctrl">−</button><button id="resetView" class="ctrl" title="Zoom alle">⊙</button></div>
+  <div id="setupPanel" class="panel"><h3>Prosjektkoordinatsystem</h3><p class="hint">Denne versjonen er låst til Published coordinate reference system: Norway/EUREF89NTM | NTM Zone 7 | EPSG:5107. Høydesystem: NN2000. Modellkoordinater tolkes som X=øst og Y=nord i EUREF89 NTM sone 7.</p><div class="grid hidden"><div class="field"><label>Koordinatsystem</label><select id="cfgCRS"><option value="ntm7" selected>NTM7</option></select></div><div class="field"><label>Akser</label><select id="cfgAxis"><option value="xy" selected>X=øst, Y=nord</option></select></div><input id="cfgMX" value="0"><input id="cfgMY" value="0"><input id="cfgLat" value="61.0000000"><input id="cfgLng" value="7.5000000"><input id="cfgScaleX" value="1"><input id="cfgScaleY" value="1"><input id="cfgRotation" value="0"></div><div class="actions"><button id="closeCfg" class="btn">Lukk</button></div></div>
+  <div id="toast" class="toast"></div>
+</div>
+<div class="info"><div class="cell"><span class="lab">Sted</span><span id="valPlace" class="val">–</span></div><div class="cell"><span class="lab">Adresse / veg</span><span id="valAddress" class="val">–</span></div><div class="cell"><span class="lab">Kommune</span><span id="valMunicipality" class="val">–</span></div><div class="cell"><span class="lab">Retning</span><span id="valDir" class="val">–</span></div></div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+let API=null,map=null,baseLayer=null,fkbLayer=null,customWmsLayer=null,cameraMarker=null,fovLayer=null,pollTimer=null;
+let followCamera=true,hasCamera=false;
+let camPos={x:0,y:0,z:0},camDir={x:0,y:1,z:0};
+let lastGeocodeAt=0,lastGeocodeLL=null,geocodeAbort=null;
+const EARTH_R=6378137;
+const PROJECT_CRS='EPSG:5107';
+
+// EUREF89 NTM sone 7, EPSG:5107. Brukes for Trimble-modellens X=øst, Y=nord.
+proj4.defs('EPSG:5107','+proj=tmerc +lat_0=58 +lon_0=7.5 +k=1 +x_0=100000 +y_0=1000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+proj4.defs('EPSG:25832','+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+proj4.defs('EPSG:25833','+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+
+function setStatus(type,text){$('statusText').textContent=text;$('statusDot').className='dot'+(type?' '+type:'');}
+function toast(msg,ms=2600){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),ms);}
+function modelToLatLng(x,y){try{const p=proj4(PROJECT_CRS,'EPSG:4326',[Number(x),Number(y)]);return L.latLng(p[1],p[0]);}catch(e){console.error('Koordinattransformasjon feilet',e);return L.latLng(61.0000000,7.5000000);}}
+function latLngToModel(ll){const p=proj4('EPSG:4326',PROJECT_CRS,[ll.lng,ll.lat]);return {x:p[0],y:p[1],z:camPos.z};}
+function headingDeg(){let h=Math.atan2(camDir.x,camDir.y)*180/Math.PI;return (h+360)%360;}
+function cleanWmsUrl(url){return String(url||'').trim().split('?')[0];}
+function distanceMeters(a,b){
+  if(!a||!b)return Infinity;
+  const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180;
+  const dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const h=Math.sin(dLat/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dLng/2)**2;
+  return 2*EARTH_R*Math.asin(Math.sqrt(h));
+}
+function setPlaceInfo(place='–',address='–',municipality='–'){
+  $('valPlace').textContent=place||'–';
+  $('valAddress').textContent=address||'–';
+  $('valMunicipality').textContent=municipality||'–';
+}
+function pickProp(obj,...keys){for(const k of keys){if(obj?.[k])return obj[k];}return '';}
+async function reverseGeocode(ll){
+  const now=Date.now();
+  if(now-lastGeocodeAt<3000 && distanceMeters(lastGeocodeLL,ll)<50)return;
+  lastGeocodeAt=now;lastGeocodeLL=ll;
+  if(geocodeAbort)geocodeAbort.abort();
+  geocodeAbort=new AbortController();
+  setPlaceInfo('Henter sted…','–','–');
+  try{
+    const url=`https://api.entur.io/geocoder/v1/reverse?point.lat=${encodeURIComponent(ll.lat)}&point.lon=${encodeURIComponent(ll.lng)}&size=1&lang=no`;
+    const res=await fetch(url,{signal:geocodeAbort.signal,headers:{'ET-Client-Name':'norconsult-minimap'}});
+    if(!res.ok)throw new Error('Entur HTTP '+res.status);
+    const data=await res.json();
+    const f=data?.features?.[0];
+    const p=f?.properties||{};
+    const place=pickProp(p,'name','label','locality','borough','county');
+    const address=pickProp(p,'street','label','name');
+    const municipality=pickProp(p,'locality','municipality','county');
+    setPlaceInfo(place,address,municipality);
+  }catch(err){
+    if(err?.name==='AbortError')return;
+    try{
+      const url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(ll.lat)}&lon=${encodeURIComponent(ll.lng)}&zoom=16&addressdetails=1&accept-language=no`;
+      const res=await fetch(url,{signal:geocodeAbort.signal});
+      if(!res.ok)throw new Error('Nominatim HTTP '+res.status);
+      const data=await res.json(),a=data?.address||{};
+      const place=a.hamlet||a.village||a.town||a.city||a.suburb||a.neighbourhood||a.county||'Ukjent sted';
+      const road=[a.road||a.pedestrian||a.path||a.cycleway||'',a.house_number||''].filter(Boolean).join(' ');
+      const municipality=a.municipality||a.city||a.town||a.county||'';
+      setPlaceInfo(place,road||data?.display_name||'–',municipality||'–');
+    }catch(e){
+      if(e?.name!=='AbortError')setPlaceInfo('Stedsnavn utilgjengelig','Kontroller nettilgang','–');
+    }
+  }
+}
+
+const FKB_WMS_URL='https://wms.geonorge.no/skwms1/wms.fkb';
+const FKB_FALLBACK_LAYERS=[
+  {name:'fkb',title:'Alle FKB-lag'},
+  {name:'vann_omrade,vannkontur',title:'FKB Vann'},
+  {name:'bygning,bygningspunkt,bygningsavgrensning',title:'FKB Bygning'},
+  {name:'veg,vegavgrensning',title:'FKB Veg'},
+  {name:'traktorveg_sti',title:'FKB Traktorveg/Sti'},
+  {name:'arealbruk',title:'FKB Arealbruk'},
+  {name:'hoydekurver_5m,hoydekurver_1m,hoydepunkt',title:'FKB Høyde'},
+  {name:'ledningslinje,ledningspunkt,ledningsgrense',title:'FKB Ledning'},
+  {name:'tiltak',title:'FKB Tiltak'},
+  {name:'bane,lufthavn',title:'FKB Bane/Lufthavn'},
+  {name:'kommunegrenser,fylkesgrenser,riksgrense',title:'Administrative grenser'}
+];
+let fkbLayersLoaded=false;
+function fillFkbLayerSelect(items){
+  const sel=$('fkbLayerSelect'); if(!sel)return;
+  const current=sel.value||'fkb';
+  sel.innerHTML='';
+  for(const it of items){
+    const o=document.createElement('option'); o.value=it.name;
+    o.textContent=it.title && it.title!==it.name ? `${it.title} (${it.name})` : it.name;
+    sel.appendChild(o);
+  }
+  if([...sel.options].some(o=>o.value===current))sel.value=current;
+}
+async function loadFkbLayersFromCapabilities(){
+  fillFkbLayerSelect(FKB_FALLBACK_LAYERS);
+  try{
+    const res=await fetch(FKB_WMS_URL+'?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0',{mode:'cors'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const txt=await res.text();
+    const xml=new DOMParser().parseFromString(txt,'text/xml');
+    const layers=[...xml.querySelectorAll('Layer > Name')].map(n=>{
+      const layer=n.parentElement;
+      const title=layer.querySelector(':scope > Title')?.textContent?.trim()||n.textContent.trim();
+      return {name:n.textContent.trim(),title};
+    }).filter(x=>x.name && x.name.toLowerCase()!=='wms');
+    const all=[{name:'fkb',title:'Alle FKB-lag'},...layers];
+    const seen=new Set(), unique=[];
+    for(const x of all){if(!seen.has(x.name)){unique.push(x);seen.add(x.name);}}
+    if(unique.length>1){fillFkbLayerSelect(unique);fkbLayersLoaded=true;toast('FKB-lagliste hentet fra Kartverket');}
+  }catch(e){
+    console.warn('FKB GetCapabilities feilet, bruker fallback-liste:',e);
+    toast('Bruker lokal FKB-lagliste. GetCapabilities kunne ikke hentes.',3800);
+  }
+}
+function selectedFkbLayers(){return $('fkbLayerSelect')?.value || 'fkb';}
+function makeFkbLayer(){
+  return L.tileLayer.wms(FKB_WMS_URL,{
+    layers:selectedFkbLayers(),
+    format:'image/png',
+    transparent:true,
+    version:'1.3.0',
+    crs:L.CRS.EPSG3857,
+    opacity:0.95,
+    attribution:'© Kartverket / Geonorge FKB',
+    maxZoom:22
+  });
+}
+function refreshFkbLayer(){
+  if(!map || $('mapLayer')?.value!=='wms_fkb')return;
+  if(fkbLayer){try{map.removeLayer(fkbLayer);}catch(e){}}
+  fkbLayer=makeFkbLayer();
+  fkbLayer.on('tileerror',()=>toast('FKB WMS returnerte ingen kartflis. Zoom nærmere inn eller prøv Alle FKB-lag.',5000));
+  fkbLayer.addTo(map);
+  toast('FKB-lag aktivert: '+selectedFkbLayers());
+}
+function toggleRows(key){
+  $('fkbRow')?.classList.toggle('show',key==='wms_fkb');
+  $('wmsRow')?.classList.toggle('show',key==='wms_custom');
+}
+function setBaseLayer(key){
+  if(!map)return;
+  if(baseLayer){try{map.removeLayer(baseLayer);}catch(e){}}
+  if(fkbLayer){try{map.removeLayer(fkbLayer);}catch(e){} fkbLayer=null;}
+  if(customWmsLayer){try{map.removeLayer(customWmsLayer);}catch(e){} customWmsLayer=null;}
+  toggleRows(key);
+
+  const base={
+    arcgis_flyfoto:()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'}),
+    osm:()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
+    grunnkart:()=>L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.norges_grunnkart',{layers:'Norges_grunnkart',format:'image/png',transparent:false,version:'1.3.0',crs:L.CRS.EPSG3857,maxZoom:22,attribution:'© Kartverket'}),
+    kv_topo:()=>L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',{maxZoom:20,attribution:'© Kartverket'}),
+    kv_gray:()=>L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png',{maxZoom:20,attribution:'© Kartverket'}),
+    kv_raster:()=>L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png',{maxZoom:20,attribution:'© Kartverket'}),
+    google_sat:()=>L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:22,attribution:'© Google'}),
+    google_hybrid:()=>L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:22,attribution:'© Google'})
+  };
+
+  if(key==='wms_fkb'){
+    baseLayer=base.google_sat().addTo(map);
+    fillFkbLayerSelect(FKB_FALLBACK_LAYERS);
+    if(!fkbLayersLoaded)loadFkbLayersFromCapabilities().finally(refreshFkbLayer);
+    else refreshFkbLayer();
+    return;
+  }
+  if(key==='wms_custom'){
+    baseLayer=base.google_sat().addTo(map);
+    addCustomWMS(false);
+    return;
+  }
+  baseLayer=(base[key]||base.arcgis_flyfoto)().addTo(map);
+}
+function addCustomWMS(showMsg=true){
+  const url=cleanWmsUrl($('wmsUrl')?.value||'');
+  const layers=String($('wmsLayers')?.value||'').trim();
+  if(!url||!layers){if(showMsg)toast('Fyll inn WMS URL og lagnavn.');return;}
+  if(customWmsLayer){try{map.removeLayer(customWmsLayer);}catch(e){}}
+  customWmsLayer=L.tileLayer.wms(url,{layers,format:'image/png',transparent:true,version:'1.3.0',crs:L.CRS.EPSG3857,maxZoom:22,attribution:'WMS'});
+  customWmsLayer.on('tileerror',()=>toast('Egen WMS ga ingen kartflis. Kontroller URL, lagnavn og CORS.',5000));
+  customWmsLayer.addTo(map);
+  if(showMsg)toast('Egen WMS lagt til: '+layers);
+}
+
+function formatDate(v){if(!v)return '–';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('nb-NO');}
+function firstValue(obj,paths){for(const path of paths){let v=obj;for(const k of path.split('.'))v=v?.[k];if(v!==undefined&&v!==null&&v!=='')return v;}return null;}
+async function loadModelContext(){
+  if(!API)return;
+  const project=await safe(()=>API.project?.getProject?.())||await safe(()=>API.project?.getCurrentProject?.())||await safe(()=>API.workspace?.getProject?.());
+  $('ctxProject').textContent=firstValue(project,['name','project.name','data.name'])||'Trimble Connect-prosjekt';
+  const modelCalls=[()=>API.viewer?.getModels?.(),()=>API.viewer?.getLoadedModels?.(),()=>API.viewer?.models?.getModels?.(),()=>API.project?.getModels?.()];
+  let models=null;for(const c of modelCalls){const r=await safe(c);if(r){models=Array.isArray(r)?r:(r.models||r.data||null);if(models)break;}}
+  const m=Array.isArray(models)?models[0]:null;
+  $('ctxModel').textContent=firstValue(m,['name','fileName','modelName','file.name'])||(Array.isArray(models)&&models.length?`${models.length} modeller lastet`:'Ingen modellinfo tilgjengelig');
+  $('ctxRevision').textContent=firstValue(m,['revision','version','versionName','file.version.name','metadata.revision'])||'–';
+  $('ctxUpdated').textContent=formatDate(firstValue(m,['modifiedOn','updatedAt','lastModified','file.modifiedOn']));
+}
+function initMap(){
+  map=L.map('gmap',{zoomControl:false,preferCanvas:true,attributionControl:true}).setView([61.0000000,7.5000000],15);
+  map.createPane('cameraPane');map.getPane('cameraPane').style.zIndex=700;
+  setBaseLayer($('mapLayer').value);
+  $('zoomIn').onclick=()=>map.zoomIn();$('zoomOut').onclick=()=>map.zoomOut();$('resetView').onclick=fitAll;
+  map.on('dragstart',()=>{followCamera=false;$('followBtn').classList.remove('active');});
+  map.on('click',onMapClick);
+}
+function fitAll(){if(hasCamera&&map)map.setView(modelToLatLng(camPos.x,camPos.y),Math.max(map.getZoom(),18));}
+function cameraIcon(bearing){return L.divIcon({className:'',html:`<div class="camera-icon" style="transform:rotate(${bearing}deg)"></div>`,iconSize:[48,48],iconAnchor:[24,24]});}
+function offsetLL(ll,bearing,dist){const br=bearing*Math.PI/180,latR=ll.lat*Math.PI/180;return L.latLng(ll.lat+(dist*Math.cos(br))/EARTH_R*180/Math.PI,ll.lng+(dist*Math.sin(br))/(EARTH_R*Math.cos(latR))*180/Math.PI);}
+function updateCamera(){
+  if(!map||!hasCamera)return;
+  const ll=modelToLatLng(camPos.x,camPos.y),bearing=headingDeg();
+  if(cameraMarker)cameraMarker.setLatLng(ll).setIcon(cameraIcon(bearing));
+  else cameraMarker=L.marker(ll,{pane:'cameraPane',interactive:false,icon:cameraIcon(bearing),zIndexOffset:1000}).addTo(map);
+  if(fovLayer){map.removeLayer(fovLayer);fovLayer=null;}
+  if($('showFOV')?.checked){const r=90,fov=46;fovLayer=L.polygon([ll,offsetLL(ll,bearing-fov/2,r),offsetLL(ll,bearing,r*1.15),offsetLL(ll,bearing+fov/2,r)],{pane:'cameraPane',color:'#00a3d9',opacity:.85,weight:2,fillColor:'#00a3d9',fillOpacity:.18,interactive:false}).addTo(map);}
+  $('valDir').textContent=Math.round(bearing)+'°';$('levelBadge').textContent='NN2000 Z: '+camPos.z.toFixed(1)+' m';
+  reverseGeocode(ll);
+  $('compassNeedle').setAttribute('transform',`rotate(${bearing},24,24)`);$('compassNeedleS').setAttribute('transform',`rotate(${bearing},24,24)`);
+  if(followCamera)map.panTo(ll,{animate:false});
+}
+function onCameraUpdate(pos,dir){
+  if(!pos)return;
+  camPos={x:+(pos.x??pos.X??0),y:+(pos.y??pos.Y??0),z:+(pos.z??pos.Z??0)};
+  if(dir){camDir={x:+(dir.x??dir.X??0),y:+(dir.y??dir.Y??1),z:+(dir.z??dir.Z??0)};const n=Math.hypot(camDir.x,camDir.y,camDir.z)||1;camDir.x/=n;camDir.y/=n;camDir.z/=n;}
+  hasCamera=true;setStatus('live','Live');updateCamera();
+}
+function vFromTo(a,b){if(!a||!b)return null;return{x:(b.x??b.X??0)-(a.x??a.X??0),y:(b.y??b.Y??0)-(a.y??a.Y??0),z:(b.z??b.Z??0)-(a.z??a.Z??0)};}
+function parseCamera(cam){if(!cam)return;const c=cam.camera??cam;const pos=c.lookAt??c.target??c.position??c.eye??c.cameraPosition??c.location;const dir=c.direction??c.viewDirection??(c.target||c.lookAt?vFromTo(c.eye??c.position,c.target??c.lookAt):null);onCameraUpdate(pos,dir);}
+async function safe(fn){try{return await fn();}catch(e){return null;}}
+async function pollCamera(){if(!API)return;const calls=[()=>API.viewer?.getCamera?.(),()=>API.viewer?.camera?.getCamera?.(),()=>API.viewer?.getView?.()];for(const c of calls){const r=await safe(c);if(r){parseCamera(r);return;}}}
+async function initTrimble(){try{API=await BIMToolsConnect(window.parent,(event,args)=>{const ev=String(event).toLowerCase();if(ev.includes('camera')||ev.includes('view'))parseCamera(args?.data??args?.camera??args);});setStatus('live','Trimble tilkoblet');loadModelContext();await safe(()=>API.viewer?.subscribeToCamera?.());await safe(()=>API.viewer?.enableCameraEvents?.());pollTimer=setInterval(pollCamera,700);pollCamera();}catch(e){console.error(e);setStatus('error','Trimble ikke tilkoblet');toast('Trimble Connect API ikke tilgjengelig');}}
+async function onMapClick(e){if(!$('clickMove')?.checked||!API||!hasCamera)return;const target=latLngToModel(e.latlng);const cam={position:{x:target.x,y:target.y,z:target.z},direction:camDir};let ok=false;const calls=[()=>API.viewer?.setCamera?.(cam),()=>API.viewer?.camera?.setCamera?.(cam),()=>API.viewer?.setView?.({camera:cam}),()=>API.viewer?.moveCamera?.(cam)];for(const c of calls){const r=await safe(c);if(r!==null){ok=true;break;}}camPos=target;updateCamera();toast(ok?'Kamera flyttet til NTM7-posisjon':'Kartposisjon beregnet, men Trimble API støtter ikke kameraflytting her');}
+function openStreetView(){const ll=hasCamera?modelToLatLng(camPos.x,camPos.y):map?.getCenter();if(!ll){toast('Ingen kartposisjon tilgjengelig');return;}const url=`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll.lat.toFixed(7)},${ll.lng.toFixed(7)}&heading=${Math.round(headingDeg())}&pitch=0&fov=80`;const w=window.open(url,'_blank','noopener,noreferrer');toast(w?'Åpner Google Street View i ny fane':'Nettleseren blokkerte ny fane.');}
+function wireUI(){
+  $('centerCamera').onclick=()=>{if(hasCamera&&map)map.setView(modelToLatLng(camPos.x,camPos.y),Math.max(map.getZoom(),18));};
+  $('followBtn').onclick=()=>{followCamera=!followCamera;$('followBtn').classList.toggle('active',followCamera);if(followCamera)$('centerCamera').click();};
+  $('mapLayer').onchange=()=>setBaseLayer($('mapLayer').value);
+  $('fkbLayerSelect').onchange=()=>{if($('mapLayer').value!=='wms_fkb'){$('mapLayer').value='wms_fkb';setBaseLayer('wms_fkb');}else refreshFkbLayer();};
+  $('refreshFkbLayers').onclick=async()=>{if($('mapLayer').value!=='wms_fkb'){$('mapLayer').value='wms_fkb';setBaseLayer('wms_fkb');} await loadFkbLayersFromCapabilities(); refreshFkbLayer();};
+  $('applyWms')?.addEventListener('click',()=>{if($('mapLayer').value!=='wms_custom'){$('mapLayer').value='wms_custom';setBaseLayer('wms_custom');}else addCustomWMS(true);});
+  $('configBtn').onclick=()=>$('setupPanel').classList.add('show');
+  $('closeCfg').onclick=()=>$('setupPanel').classList.remove('show');
+  $('streetViewBtn').onclick=openStreetView;
+  document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=()=>{const card=$(btn.dataset.toggle);card?.classList.toggle('open');btn.textContent=card?.classList.contains('open')?'−':'+';});
+  $('showFOV').onchange=()=>updateCamera();
+}
+(function boot(){wireUI();setStatus('','Laster kart…');initMap();initTrimble();})();
+</script>
+</body>
+</html>
