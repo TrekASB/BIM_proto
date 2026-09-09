@@ -445,7 +445,7 @@
 
   <header>
     <div class="logo-box">
-      <img src="../assets/norconsult-logo-black.png" alt="Norconsult"
+      <img src="../assets/norconsult-logo.svg" alt="Norconsult"
            onerror="this.style.display='none'; this.parentElement.textContent='Norconsult'; this.parentElement.style.fontWeight='800'; this.parentElement.style.fontSize='18px';">
     </div>
 
@@ -686,6 +686,8 @@
   </div>
 
   <script>
+function getBIMToolsBridge(){try{return (window.parent&&window.parent!==window&&window.parent.BIMToolsBridge)?window.parent.BIMToolsBridge:null;}catch(e){return null;}}
+
     if (window.ChartDataLabels) Chart.register(ChartDataLabels);
 
     Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
@@ -1876,9 +1878,11 @@
       setStatus("Kobler til Trimble Connect…", true);
 
       try{
-        API = await TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
+        API = await (getBIMToolsBridge() ? getBIMToolsBridge().connect((event,args)=>{
           if(event === "extension.accessToken") handleToken(args.data);
-        });
+        }) : TrimbleConnectWorkspace.connect(window.parent,(event,args)=>{
+          if(event === "extension.accessToken") handleToken(args.data);
+        }));
 
         const proj = await API.project.getCurrentProject();
         currentProjectId = proj.id;
