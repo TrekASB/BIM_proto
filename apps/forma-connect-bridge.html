@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Forma → Trimble Connect</title>
+<style>
+:root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--red:#b42318;--amber:#b54708;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{padding:16px}.wrap{max-width:1280px;margin:0 auto}.hero{display:flex;gap:14px;align-items:center;margin-bottom:14px}.hero h1{margin:0;color:var(--blue);font-size:22px}.hero p{margin:4px 0 0;color:var(--muted);font-size:13px}.logo{width:120px;height:52px;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:14px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(16,24,40,.05);margin-bottom:14px}.card h2{font-size:15px;margin:0 0 12px;color:#344054}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.stack{display:grid;gap:9px}.label{font-size:11px;font-weight:800;color:#475467;text-transform:uppercase;letter-spacing:.03em}.help{font-size:11px;color:var(--muted);line-height:1.45}.statusbar{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}.chip{font-size:11px;font-weight:800;border-radius:999px;padding:5px 9px;background:#eef2f6;color:#475467;border:1px solid #d9e0ea}.chip.ok{background:#ecfdf3;color:#067647;border-color:#abefc6}.chip.warn{background:#fffaeb;color:#b54708;border-color:#fedf89}.chip.bad{background:#fef3f2;color:#b42318;border-color:#fecdca}
+input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:#fff;color:var(--text);font-size:12px}button{border:0;border-radius:8px;padding:9px 11px;font-size:12px;font-weight:800;cursor:pointer;background:var(--blue);color:#fff}button.secondary{background:#fff;color:var(--blue);border:1px solid #b8c7da}button.ghost{background:#eef2f6;color:#344054}button.danger{background:#fff;color:var(--red);border:1px solid #fecdca}button:disabled{opacity:.45;cursor:not-allowed}.split{display:grid;grid-template-columns:1fr 1fr;gap:8px}.notice{border:1px solid #b2ddff;background:#eff8ff;border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.5;color:#175cd3}.warning{border-color:#fedf89;background:#fffaeb;color:#b54708}.error{border-color:#fecdca;background:#fef3f2;color:#b42318}
+.breadcrumb{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:0 0 10px}.crumb{border:0;background:#eef2f6;color:#344054;padding:5px 7px;font-size:11px;font-weight:700}.tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:430px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}th{position:sticky;top:0;background:#f8fafc;text-align:left;color:#475467;font-size:11px;padding:9px;border-bottom:1px solid var(--border)}td{padding:9px;border-bottom:1px solid #eef2f6;vertical-align:middle}tr.item{cursor:pointer}tr.item:hover{background:#f9fbff}tr.item.selected{background:#edf4ff}.name{font-weight:700}.muted{color:var(--muted)}.badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eef2f6;color:#475467}.badge.model{background:#edf4ff;color:#175cd3}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.selection{padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);font-size:12px;line-height:1.5}.log{background:#101828;color:#d0d5dd;border-radius:10px;padding:10px;min-height:104px;max-height:180px;overflow:auto;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}.progress{height:7px;background:#eef2f6;border-radius:999px;overflow:hidden;margin-top:8px}.progress>span{display:block;width:0;height:100%;background:var(--blue);transition:width .25s}.smallbtn{padding:6px 8px;font-size:11px}
+@media(max-width:920px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start}.logo{width:100px}.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <img class="logo" src="../assets/norconsult-logo-black.png" alt="Norconsult">
+    <div><h1>Autodesk Forma → Trimble Connect</h1><p>Velg modell i Autodesk Forma Data Management, kopier kildefilen til aktivt Trimble Connect-prosjekt og last modellen i Trimble 3D.</p></div>
+  </div>
+
+  <div class="statusbar">
+    <span id="tcChip" class="chip warn">Trimble: kobler til …</span>
+    <span id="apsChip" class="chip warn">Autodesk: ikke innlogget</span>
+    <span id="projectChip" class="chip">Trimble-prosjekt: –</span>
+  </div>
+
+  <div class="grid">
+    <aside>
+      <section class="card">
+        <h2>1. Autodesk APS-oppsett</h2>
+        <div class="stack">
+          <div><div class="label">APS Client ID</div><input id="clientId" autocomplete="off" placeholder="Lim inn Client ID for Autodesk APS-appen"></div>
+          <div class="notice">App-type i APS skal være <b>Desktop, Mobile, Single-Page App</b> (PKCE). Registrer callback-adressen nøyaktig som vist under, og legg Client ID til som <b>Custom Integration</b> i Forma-huben.</div>
+          <div><div class="label">Callback URL</div><input id="callbackUrl" readonly></div>
+          <div class="row"><button id="saveClient" class="secondary">Lagre Client ID</button><button id="loginAps">Logg inn Autodesk</button><button id="logoutAps" class="danger">Logg ut</button></div>
+          <div class="help">Client ID er en offentlig identifikator for SPA/PKCE. Ingen Autodesk Client Secret lagres i extensionen.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Velg Forma-prosjekt</h2>
+        <div class="stack">
+          <div><div class="label">Hub</div><select id="hubSelect" disabled><option>Logg inn først</option></select></div>
+          <div><div class="label">Prosjekt</div><select id="projectSelect" disabled><option>Velg hub</option></select></div>
+          <button id="reloadForma" class="secondary" disabled>Oppdater Forma-data</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. Mål i Trimble Connect</h2>
+        <div class="stack">
+          <div><div class="label">Målmappe</div><input id="targetPath" value="/" placeholder="/ eller f.eks. /01_Modeller/Forma"></div>
+          <div class="help">Målmappen må finnes i Trimble Connect. Bruk <b>/</b> for rotmappen. IFC anbefales som nøytralt format for samordning.</div>
+          <div class="notice warning">Denne prototypeversjonen overfører filen gjennom nettleseren. For svært store modeller bør vi senere legge inn en liten server-/cloud-funksjon som strømmer filen direkte mellom Autodesk og Trimble uten å holde hele modellen i nettleserminnet.</div>
+        </div>
+      </section>
+    </aside>
+
+    <main>
+      <section class="card">
+        <h2>Forma Data Management</h2>
+        <div id="breadcrumbs" class="breadcrumb"><span class="muted">Velg et Forma-prosjekt.</span></div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th style="width:42%">Navn</th><th>Type</th><th>Oppdatert</th><th style="width:90px">Format</th></tr></thead>
+            <tbody id="fileBody"><tr><td colspan="4" class="muted">Ingen data lastet.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button id="goUp" class="ghost" disabled>← Opp ett nivå</button>
+          <button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Valgt modell</h2>
+        <div id="selectedBox" class="selection muted">Velg en modellfil i listen over.</div>
+        <div class="actions">
+          <button id="syncBtn" disabled>Kopier til Trimble Connect</button>
+          <button id="showBtn" class="secondary" disabled>Finn og vis i Trimble 3D</button>
+        </div>
+        <div class="progress"><span id="progressBar"></span></div>
+      </section>
+
+      <section class="card">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">Status / logg</h2><button id="clearLog" class="ghost smallbtn">Tøm</button></div>
+        <div id="log" class="log">Klar.</div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+const APS_BASE='https://developer.api.autodesk.com';
+const APS_CALLBACK='https://trekasb.github.io/BIM_proto/apps/forma-auth-callback.html';
+const MODEL_EXTS=new Set(['ifc','rvt','dwg','dxf','skp','nwd','nwc','trb','tekla','dgn','obj']);
+let TC_API=null, TC_PROJECT=null, TC_TOKEN=null, TC_ORIGIN=null;
+let APS_TOKEN=null;
+let currentHub=null,currentProject=null,currentFolder=null,folderStack=[],selectedItem=null,lastSyncedName=null;
+const $=id=>document.getElementById(id);
+
+function log(msg,type='info'){
+  const t=new Date().toLocaleTimeString('nb-NO');
+  const prefix=type==='error'?'FEIL':type==='ok'?'OK':'INFO';
+  $('log').textContent += `\n[${t}] ${prefix}: ${msg}`;
+  $('log').scrollTop=$('log').scrollHeight;
+}
+function setChip(id,text,state){const el=$(id);el.textContent=text;el.className='chip '+(state||'');}
+function setProgress(v){$('progressBar').style.width=Math.max(0,Math.min(100,v))+'%';}
+function escapeHtml(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function extOf(name){const m=String(name||'').toLowerCase().match(/\.([a-z0-9]+)$/);return m?m[1]:'';}
+function fmtDate(v){if(!v)return '–';const d=new Date(v);return isNaN(d)?'–':d.toLocaleString('nb-NO');}
+function normalizeName(x){return String(x||'').trim().toLowerCase();}
+
+async function initTrimble(){
+  try{
+    const bridge=window.parent?.BIMToolsBridge;
+    if(!bridge)throw new Error('BIMToolsBridge finnes ikke. Åpne verktøyet fra Norconsult BIM-tools i Trimble Connect.');
+    TC_API=await bridge.connect(onBridgeEvent);
+    TC_PROJECT=await TC_API.project.getProject();
+    setChip('tcChip','Trimble: tilkoblet','ok');
+    setChip('projectChip','Trimble-prosjekt: '+(TC_PROJECT?.name||TC_PROJECT?.id||'ukjent'),'ok');
+    log('Tilkoblet Trimble Connect-prosjekt: '+(TC_PROJECT?.name||TC_PROJECT?.id),'ok');
+    await requestTrimbleToken(false);
+  }catch(err){setChip('tcChip','Trimble: ikke tilkoblet','bad');log(err.message||String(err),'error');}
+}
+function tokenFromPayload(args){
+  const d=args?.data??args;
+  if(typeof d==='string')return d;
+  return d?.accessToken||d?.access_token||d?.token||null;
+}
+function onBridgeEvent(event,args){
+  if(event==='extension.accessToken'){
+    const token=tokenFromPayload(args);
+    if(token && token!=='pending' && token!=='denied'){
+      TC_TOKEN=token;
+      setChip('tcChip','Trimble: API-tilgang gitt','ok');
+      log('Trimble API-token mottatt.','ok');
+      if(window.__tcTokenResolve){window.__tcTokenResolve(token);window.__tcTokenResolve=null;}
+    }
+  }
+}
+async function requestTrimbleToken(wait=true){
+  if(TC_TOKEN)return TC_TOKEN;
+  if(!TC_API)throw new Error('Trimble Workspace API er ikke klar.');
+  const value=await TC_API.extension.requestPermission('accesstoken');
+  if(value && value!=='pending' && value!=='denied'){
+    TC_TOKEN=typeof value==='string'?value:tokenFromPayload(value);
+    if(TC_TOKEN)return TC_TOKEN;
+  }
+  if(value==='denied')throw new Error('Tilgang til Trimble access token er avslått. Nullstill samtykke i extension-innstillingene og prøv igjen.');
+  if(!wait){log('Trimble ber om samtykke til API-tilgang. Godkjenn forespørselen i Connect.');return null;}
+  return new Promise((resolve,reject)=>{
+    window.__tcTokenResolve=resolve;
+    setTimeout(()=>{if(window.__tcTokenResolve){window.__tcTokenResolve=null;reject(new Error('Fikk ikke Trimble API-token. Kontroller samtykke for extensionen.'));}},30000);
+  });
+}
+
+function randomString(len=64){
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const bytes=crypto.getRandomValues(new Uint8Array(len));
+  return Array.from(bytes,b=>chars[b%chars.length]).join('');
+}
+async function sha256b64url(value){
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function getClientId(){return $('clientId').value.trim();}
+function saveClient(){const id=getClientId();if(!id){log('Skriv inn APS Client ID.','error');return;}localStorage.setItem('norconsult_aps_client_id',id);log('APS Client ID lagret lokalt i nettleseren.','ok');}
+async function loginAps(){
+  const clientId=getClientId();
+  if(!clientId){log('APS Client ID mangler.','error');return;}
+  saveClient();
+  const verifier=randomString(72), challenge=await sha256b64url(verifier), state=randomString(32);
+  sessionStorage.setItem('aps_pkce_verifier',verifier);sessionStorage.setItem('aps_oauth_state',state);
+  const url=new URL(APS_BASE+'/authentication/v2/authorize');
+  url.searchParams.set('response_type','code');url.searchParams.set('client_id',clientId);url.searchParams.set('redirect_uri',APS_CALLBACK);
+  url.searchParams.set('scope','data:read');url.searchParams.set('code_challenge',challenge);url.searchParams.set('code_challenge_method','S256');url.searchParams.set('state',state);url.searchParams.set('prompt','login');
+  const popup=window.open(url.toString(),'apsFormaLogin','width=720,height=760,resizable=yes,scrollbars=yes');
+  if(!popup)throw new Error('Nettleseren blokkerte innloggingsvinduet. Tillat popups og prøv igjen.');
+  log('Autodesk-innlogging åpnet i eget vindu.');
+}
+async function exchangeApsCode(code,state){
+  const expected=sessionStorage.getItem('aps_oauth_state');
+  if(!state||state!==expected)throw new Error('OAuth state stemmer ikke. Innloggingen ble avvist av sikkerhetsgrunner.');
+  const verifier=sessionStorage.getItem('aps_pkce_verifier'),clientId=getClientId();
+  const body=new URLSearchParams({client_id:clientId,code_verifier:verifier,code,grant_type:'authorization_code',redirect_uri:APS_CALLBACK});
+  const r=await fetch(APS_BASE+'/authentication/v2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+  if(!r.ok)throw new Error('Autodesk token-feil: '+r.status+' '+await r.text());
+  const tok=await r.json();storeApsToken(tok);await afterApsLogin();
+}
+function storeApsToken(tok){
+  APS_TOKEN=tok.access_token;
+  sessionStorage.setItem('aps_access_token',tok.access_token||'');
+  if(tok.refresh_token)sessionStorage.setItem('aps_refresh_token',tok.refresh_token);
+  sessionStorage.setItem('aps_expires_at',String(Date.now()+(Number(tok.expires_in||3500)*1000)-60000));
+}
+async function getApsToken(){
+  APS_TOKEN=APS_TOKEN||sessionStorage.getItem('aps_access_token');
+  const expires=Number(sessionStorage.getItem('aps_expires_at')||0);
+  if(APS_TOKEN && Date.now()<expires)return APS_TOKEN;
+  const refresh=sessionStorage.getItem('aps_refresh_token'),clientId=getClientId();
+  if(refresh&&clientId){
+    const body=new URLSearchParams({grant_type:'refresh_token',client_id:clientId,refresh_token:refresh});
+    const r=await fetch(APS_BASE+'/authentication/v2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(r.ok){storeApsToken(await r.json());return APS_TOKEN;}
+  }
+  throw new Error('Autodesk-økten er utløpt. Logg inn på nytt.');
+}
+function logoutAps(){
+  APS_TOKEN=null;['aps_access_token','aps_refresh_token','aps_expires_at','aps_pkce_verifier','aps_oauth_state'].forEach(k=>sessionStorage.removeItem(k));
+  setChip('apsChip','Autodesk: ikke innlogget','warn');$('hubSelect').disabled=true;$('projectSelect').disabled=true;$('reloadForma').disabled=true;
+  $('fileBody').innerHTML='<tr><td colspan="4" class="muted">Logg inn på Autodesk for å hente data.</td></tr>';selectedItem=null;updateSelection();log('Autodesk-økt fjernet lokalt.');
+}
+async function afterApsLogin(){setChip('apsChip','Autodesk: tilkoblet','ok');$('hubSelect').disabled=false;$('reloadForma').disabled=false;log('Autodesk APS-innlogging fullført.','ok');await loadHubs();}
+async function apsJson(path){
+  const token=await getApsToken();const r=await fetch(APS_BASE+path,{headers:{Authorization:'Bearer '+token}});
+  if(!r.ok)throw new Error(`Autodesk API ${r.status}: ${await r.text()}`);return r.json();
+}
+
+async function loadHubs(){
+  try{
+    const j=await apsJson('/project/v1/hubs');const hubs=j.data||[];
+    $('hubSelect').innerHTML='<option value="">Velg hub …</option>'+hubs.map(h=>`<option value="${escapeHtml(h.id)}">${escapeHtml(h.attributes?.name||h.id)}</option>`).join('');
+    log(`Fant ${hubs.length} Autodesk-hub(er).`,'ok');
+  }catch(e){log(e.message,'error');if(/403|404/.test(e.message))log('Kontroller at APS Client ID er lagt til under Custom Integrations i riktig Forma-hub.','error');}
+}
+async function loadProjects(hubId){
+  currentHub=hubId;currentProject=null;currentFolder=null;folderStack=[];selectedItem=null;updateSelection();
+  $('projectSelect').disabled=true;$('projectSelect').innerHTML='<option>Laster …</option>';
+  if(!hubId){$('projectSelect').innerHTML='<option>Velg hub</option>';return;}
+  try{
+    const j=await apsJson(`/project/v1/hubs/${encodeURIComponent(hubId)}/projects`);const ps=j.data||[];
+    $('projectSelect').innerHTML='<option value="">Velg prosjekt …</option>'+ps.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.attributes?.name||p.id)}</option>`).join('');
+    $('projectSelect').disabled=false;log(`Fant ${ps.length} Forma-prosjekt(er).`,'ok');
+  }catch(e){log(e.message,'error');}
+}
+async function selectProject(projectId){
+  currentProject=projectId;currentFolder=null;folderStack=[];selectedItem=null;updateSelection();
+  if(!projectId){renderEmpty('Velg et Forma-prosjekt.');return;}
+  await loadTopFolders();
+}
+async function loadTopFolders(){
+  try{
+    const j=await apsJson(`/project/v1/hubs/${encodeURIComponent(currentHub)}/projects/${encodeURIComponent(currentProject)}/topFolders`);
+    currentFolder=null;folderStack=[];renderBreadcrumbs();renderItems(j.data||[]);$('refreshFolder').disabled=false;$('goUp').disabled=true;
+    log('Topmapper lastet fra Forma Data Management.','ok');
+  }catch(e){log(e.message,'error');}
+}
+async function openFolder(folder){
+  try{
+    if(currentFolder)folderStack.push(currentFolder);
+    currentFolder={id:folder.id,name:folder.attributes?.displayName||folder.attributes?.name||'Mappe'};
+    const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(folder.id)}/contents`);
+    renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=false;$('refreshFolder').disabled=false;selectedItem=null;updateSelection();
+  }catch(e){log(e.message,'error');}
+}
+async function refreshFolder(){
+  if(!currentProject)return;
+  if(!currentFolder)return loadTopFolders();
+  try{const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(currentFolder.id)}/contents`);renderItems(j.data||[]);log('Mappe oppdatert.');}catch(e){log(e.message,'error');}
+}
+async function goUp(){
+  if(!currentFolder)return;
+  const prev=folderStack.pop();
+  if(!prev)return loadTopFolders();
+  currentFolder=prev;
+  try{const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(prev.id)}/contents`);renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=folderStack.length===0;selectedItem=null;updateSelection();}catch(e){log(e.message,'error');}
+}
+function renderBreadcrumbs(){
+  const el=$('breadcrumbs');
+  const projectName=$('projectSelect').selectedOptions[0]?.textContent||'Prosjekt';
+  let html=`<button class="crumb" data-root="1">${escapeHtml(projectName)}</button>`;
+  for(const f of folderStack)html+=`<span class="muted">›</span><span class="badge">${escapeHtml(f.name)}</span>`;
+  if(currentFolder)html+=`<span class="muted">›</span><span class="badge model">${escapeHtml(currentFolder.name)}</span>`;
+  el.innerHTML=html;el.querySelector('[data-root]')?.addEventListener('click',loadTopFolders);
+}
+function renderEmpty(text){$('fileBody').innerHTML=`<tr><td colspan="4" class="muted">${escapeHtml(text)}</td></tr>`;$('breadcrumbs').innerHTML='<span class="muted">'+escapeHtml(text)+'</span>';}
+function renderItems(items){
+  const folders=items.filter(x=>x.type==='folders');const files=items.filter(x=>x.type==='items');const list=[...folders,...files];
+  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="4" class="muted">Mappen er tom.</td></tr>';return;}
+  $('fileBody').innerHTML=list.map((x,i)=>{
+    const folder=x.type==='folders';const name=x.attributes?.displayName||x.attributes?.name||'(uten navn)';const ext=folder?'':extOf(name);const model=MODEL_EXTS.has(ext);
+    const updated=x.attributes?.lastModifiedTime||x.attributes?.createTime||x.attributes?.lastModifiedTimeRollup;
+    return `<tr class="item" data-i="${i}"><td><span class="name">${folder?'📁 ':'📄 '}${escapeHtml(name)}</span></td><td>${folder?'Mappe':(model?'<span class="badge model">Modell</span>':'Fil')}</td><td class="muted">${escapeHtml(fmtDate(updated))}</td><td>${folder?'–':`<span class="badge">${escapeHtml((ext||'?').toUpperCase())}</span>`}</td></tr>`;
+  }).join('');
+  [...$('fileBody').querySelectorAll('tr[data-i]')].forEach(row=>row.addEventListener('click',()=>{
+    const x=list[Number(row.dataset.i)];if(x.type==='folders'){openFolder(x);return;}
+    [...$('fileBody').querySelectorAll('tr.item')].forEach(r=>r.classList.remove('selected'));row.classList.add('selected');selectedItem=x;updateSelection();
+  }));
+}
+function updateSelection(){
+  const box=$('selectedBox');
+  if(!selectedItem){box.className='selection muted';box.textContent='Velg en modellfil i listen over.';$('syncBtn').disabled=true;return;}
+  const name=selectedItem.attributes?.displayName||selectedItem.attributes?.name||'(uten navn)',ext=extOf(name),model=MODEL_EXTS.has(ext);
+  box.className='selection';box.innerHTML=`<b>${escapeHtml(name)}</b><br><span class="muted">Forma item: ${escapeHtml(selectedItem.id)} · format: ${(ext||'?').toUpperCase()}</span>${model?'':'<br><span style="color:#b54708">Formatet er ikke i modellfilteret, men filen kan fortsatt forsøkes kopiert.</span>'}`;
+  $('syncBtn').disabled=false;
+}
+
+function collectOrigins(obj,out=new Set()){
+  if(!obj)return out;if(typeof obj==='string'){if(/^https:\/\//i.test(obj))out.add(obj.replace(/\/$/,''));return out;}
+  if(Array.isArray(obj)){obj.forEach(v=>collectOrigins(v,out));return out;}
+  if(typeof obj==='object')for(const [k,v] of Object.entries(obj)){if(/origin|url/i.test(k))collectOrigins(v,out);else if(typeof v==='object')collectOrigins(v,out);}return out;
+}
+function tcUrl(origin,path){origin=origin.replace(/\/$/,'');return origin.includes('/tc/api/2.0')?origin+path:origin+'/tc/api/2.0'+path;}
+async function discoverTrimbleOrigin(){
+  if(TC_ORIGIN)return TC_ORIGIN;const token=await requestTrimbleToken(true);const master='https://app.connect.trimble.com';let candidates=[master];
+  try{const rr=await fetch(tcUrl(master,'/regions'),{headers:{Authorization:'Bearer '+token}});if(rr.ok){const rj=await rr.json();candidates=[...new Set([master,...collectOrigins(rj)])];}}catch(e){log('Kunne ikke lese Trimble-regionlisten, prøver standard-endepunkt.');}
+  for(const origin of candidates){
+    try{const r=await fetch(tcUrl(origin,`/projects/${encodeURIComponent(TC_PROJECT.id)}`),{headers:{Authorization:'Bearer '+token}});if(r.ok){TC_ORIGIN=origin;log('Trimble API-region funnet: '+origin,'ok');return origin;}}catch(_){ }
+  }
+  throw new Error('Fant ikke riktig Trimble Connect-region for aktivt prosjekt.');
+}
+async function getLatestVersion(item){
+  const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/items/${encodeURIComponent(item.id)}/tip`);return j.data;
+}
+function parseStorageUrn(urn){
+  const prefix='urn:adsk.objects:os.object:';if(!urn||!urn.startsWith(prefix))throw new Error('Fant ikke en støttet Autodesk OSS storage-URN for filen.');
+  const rest=urn.slice(prefix.length),slash=rest.indexOf('/');if(slash<1)throw new Error('Ugyldig Autodesk storage-URN.');return {bucketKey:rest.slice(0,slash),objectKey:rest.slice(slash+1)};
+}
+async function getAutodeskDownload(version){
+  let storage=version?.relationships?.storage?.data?.id;
+  if(!storage)throw new Error('Denne versjonen har ingen vanlig OSS storage-referanse. Revit Cloud Models med lenker kan kreve Autodesk RCM linked-files API.');
+  const {bucketKey,objectKey}=parseStorageUrn(storage),token=await getApsToken();
+  const url=`${APS_BASE}/oss/v2/buckets/${encodeURIComponent(bucketKey)}/objects/${encodeURIComponent(objectKey)}/signeds3download?minutesExpiration=15`;
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('Kunne ikke opprette Autodesk nedlastingslenke: '+r.status+' '+await r.text());
+  const j=await r.json(),signed=j.url||j.data?.url||j.signedUrl;if(!signed)throw new Error('Autodesk svarte uten signert nedlastings-URL.');return signed;
+}
+async function syncSelected(){
+  if(!selectedItem)return;
+  const name=selectedItem.attributes?.displayName||selectedItem.attributes?.name||'forma-model';
+  $('syncBtn').disabled=true;setProgress(5);
+  try{
+    log('Henter siste versjon av '+name+' fra Forma …');const version=await getLatestVersion(selectedItem);setProgress(15);
+    const signed=await getAutodeskDownload(version);setProgress(25);log('Signert Autodesk-nedlasting klar. Henter filinnhold …');
+    const src=await fetch(signed);if(!src.ok)throw new Error('Nedlasting fra Autodesk storage feilet: '+src.status);const blob=await src.blob();setProgress(55);
+    const mb=blob.size/1024/1024;log(`Fil mottatt: ${mb.toFixed(1)} MB.`);if(mb>750)log('Stor modell: nettleseroverføring kan bruke mye minne. Produksjonsversjon bør bruke server-side streaming.');
+    const token=await requestTrimbleToken(true),origin=await discoverTrimbleOrigin(),path=$('targetPath').value.trim()||'/';
+    const form=new FormData();form.append('file',blob,name);form.append('path',path);form.append('description',`Synkronisert fra Autodesk Forma Data Management ${new Date().toISOString()}`);
+    setProgress(65);log(`Laster opp til Trimble Connect ${path} …`);
+    const up=await fetch(tcUrl(origin,`/projects/${encodeURIComponent(TC_PROJECT.id)}/files`),{method:'POST',headers:{Authorization:'Bearer '+token},body:form});
+    if(!up.ok)throw new Error('Trimble-opplasting feilet: '+up.status+' '+await up.text());
+    let result={};try{result=await up.json();}catch(_){ }
+    setProgress(100);lastSyncedName=result.name||name;$('showBtn').disabled=false;log('Filen er kopiert til Trimble Connect: '+lastSyncedName,'ok');
+    log('Trimble må deretter prosessere modellen før den blir tilgjengelig i 3D. Bruk «Finn og vis i Trimble 3D» når prosesseringen er ferdig.');
+  }catch(e){setProgress(0);log(e.message||String(e),'error');}
+  finally{$('syncBtn').disabled=false;}
+}
+async function showSynced(){
+  if(!TC_API||!lastSyncedName){log('Ingen synkronisert modell å vise ennå.','error');return;}
+  try{
+    log('Søker etter '+lastSyncedName+' i Trimble 3D-modellisten …');const models=await TC_API.viewer.getModels();
+    const target=models.find(m=>normalizeName(m.name)===normalizeName(lastSyncedName))||models.find(m=>normalizeName(m.name).includes(normalizeName(lastSyncedName)));
+    if(!target)throw new Error('Modellen er ikke synlig i Workspace API ennå. Trimble kan fortsatt prosessere filen, eller målmappen er ikke lastet i modelltreet. Åpne/utvid mappen i Trimble 3D og prøv igjen.');
+    await TC_API.viewer.toggleModel(target.id,true,true);log('Modellen er lastet i Trimble 3D: '+target.name,'ok');
+  }catch(e){log(e.message||String(e),'error');}
+}
+
+window.addEventListener('message',async ev=>{
+  if(ev.origin!==location.origin||ev.data?.type!=='NORCONSULT_APS_OAUTH_CALLBACK')return;
+  try{if(ev.data.error)throw new Error(ev.data.error_description||ev.data.error);await exchangeApsCode(ev.data.code,ev.data.state);}catch(e){log(e.message||String(e),'error');setChip('apsChip','Autodesk: innlogging feilet','bad');}
+});
+
+$('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('norconsult_aps_client_id')||'';
+$('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('logoutAps').onclick=logoutAps;
+$('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
+$('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;$('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
+
+(async()=>{
+  await initTrimble();
+  APS_TOKEN=sessionStorage.getItem('aps_access_token');const expires=Number(sessionStorage.getItem('aps_expires_at')||0);
+  if((APS_TOKEN&&Date.now()<expires)||sessionStorage.getItem('aps_refresh_token')){try{await getApsToken();await afterApsLogin();}catch(e){logoutAps();log('Tidligere Autodesk-økt kunne ikke gjenopprettes. Logg inn på nytt.');}}
+})();
+</script>
+</body>
+</html>
