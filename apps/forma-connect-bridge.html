@@ -291,7 +291,7 @@ async function goUp(){
   currentFolder=prev;
   try{
     const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(prev.id)}/contents`);
-    renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=folderStack.length===0;
+    renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=false;
   }catch(e){log(e.message,'error');}
 }
 function renderBreadcrumbs(){
@@ -385,7 +385,7 @@ async function trimbleGoUp(){
     const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
     const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder:prev,onStatus:()=>{}});
     trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
-    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=trimbleFolderStack.length===0;updateSelection();
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;updateSelection();
   }catch(e){log(e.message||String(e),'error');}
 }
 async function refreshTrimbleFolder(){
