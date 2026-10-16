@@ -295,7 +295,7 @@ async function handleApsCallback(payload){
 }
 
 window.addEventListener('message',ev=>{
-  if(ev.origin!==location.origin)return;
+  if(ev.origin!==location.origin&&ev.origin!==APS_CALLBACK_ORIGIN)return;
   handleApsCallback(ev.data);
 });
 
