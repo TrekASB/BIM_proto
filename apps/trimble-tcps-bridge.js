@@ -66,7 +66,25 @@ async function resolveTargetFolder(project, targetPath, onStatus = () => {}) {
   return folder;
 }
 
-async function uploadBlob({ token, projectId, targetPath = '/', blob, fileName, mimeType, onStatus = () => {} }) {
+async function listFolder({ token, projectId, folder = null, onStatus = () => {} }) {
+  if (!token) throw new Error('Trimble access token mangler.');
+  if (!projectId) throw new Error('Trimble prosjekt-ID mangler.');
+
+  await configure(token);
+  const project = await getProject(projectId, onStatus);
+  const parent = folder && folder.id
+    ? { ...folder, origin: folder.origin || project.origin, type: folder.type || 'FOLDER' }
+    : project;
+
+  const entries = dataOf(await TC.TCPSClient.listFolderEntries(parent)) || [];
+  return {
+    project,
+    folder: folder && folder.id ? parent : null,
+    entries
+  };
+}
+
+async function uploadBlob({ token, projectId, targetPath = '/', targetFolder = null, blob, fileName, mimeType, onStatus = () => {} }) {
   if (!token) throw new Error('Trimble access token mangler.');
   if (!projectId) throw new Error('Trimble prosjekt-ID mangler.');
   if (!blob) throw new Error('Ingen fil er klar for opplasting.');
@@ -74,7 +92,9 @@ async function uploadBlob({ token, projectId, targetPath = '/', blob, fileName, 
 
   await configure(token);
   const project = await getProject(projectId, onStatus);
-  const target = await resolveTargetFolder(project, targetPath, onStatus);
+  const target = targetFolder && targetFolder.id
+    ? { ...targetFolder, origin: targetFolder.origin || project.origin, type: targetFolder.type || 'FOLDER' }
+    : await resolveTargetFolder(project, targetPath, onStatus);
   const parentId = target.id || project.rootId;
   const file = new File([blob], fileName, { type: mimeType || blob.type || 'application/octet-stream' });
 
@@ -100,6 +120,7 @@ async function uploadBlob({ token, projectId, targetPath = '/', blob, fileName, 
 }
 
 window.TrimbleTcpsBridge = {
+  listFolder,
   uploadBlob,
   sdkVersion: '4.0.11'
 };
