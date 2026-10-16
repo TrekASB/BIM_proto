@@ -117,7 +117,7 @@ let TC_API=null,TC_PROJECT=null,TC_TOKEN=null,APS_TOKEN=null;
 let APS_CALLBACK_BUSY=false,APS_CALLBACK_STATE_HANDLED=null;
 let currentHub=null,currentProject=null,currentFolder=null,folderStack=[];
 const selectedItems=new Map();
-let currentFormaItems=[];
+let currentFormaItems=[],currentFormaEntries=[];
 let lastSyncedModels=[];
 let trimbleProjectData=null,trimbleCurrentFolder=null,trimbleFolderStack=[],trimbleTargetFolder=null,trimbleCurrentEntries=[];
 const $=id=>document.getElementById(id);
@@ -155,7 +155,8 @@ async function initTrimble(){
     setChip('tcChip','Trimble: tilkoblet','ok');
     setChip('projectChip','Trimble-prosjekt: '+(TC_PROJECT?.name||TC_PROJECT?.id||'ukjent'),'ok');
     log('Tilkoblet Trimble Connect-prosjekt: '+(TC_PROJECT?.name||TC_PROJECT?.id),'ok');
-    await requestTrimbleToken(false);
+    const token=await requestTrimbleToken(false);
+    if(token)await loadTrimbleRoot();
   }catch(err){setChip('tcChip','Trimble: ikke tilkoblet','bad');log(err.message||String(err),'error');}
 }
 function tokenFromPayload(args){const d=args?.data??args;if(typeof d==='string')return d;return d?.accessToken||d?.access_token||d?.token||null;}
@@ -165,6 +166,7 @@ function onBridgeEvent(event,args){
     if(token&&token!=='pending'&&token!=='denied'){
       TC_TOKEN=token;setChip('tcChip','Trimble: API-tilgang gitt','ok');log('Trimble API-token mottatt.','ok');
       if(window.__tcTokenResolve){window.__tcTokenResolve(token);window.__tcTokenResolve=null;}
+      if(!trimbleProjectData)loadTrimbleRoot().catch(e=>log(e.message||String(e),'error'));
     }
   }
 }
@@ -231,9 +233,17 @@ async function getApsToken(){
   if(refresh&&clientId){const body=new URLSearchParams({grant_type:'refresh_token',client_id:clientId,refresh_token:refresh});const r=await fetch(APS_BASE+'/authentication/v2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});if(r.ok){storeApsToken(await r.json());return APS_TOKEN;}}
   throw new Error('Autodesk-økten er utløpt. Logg inn på nytt.');
 }
+function clearFormaSelection(){
+  selectedItems.clear();
+  currentFormaItems=[];
+  currentFormaEntries=[];
+  updateSelection();
+  updateSelectAllCheckbox();
+}
 function logoutAps(){
   APS_TOKEN=null;['aps_access_token','aps_refresh_token','aps_expires_at','aps_pkce_verifier','aps_oauth_state'].forEach(k=>sessionStorage.removeItem(k));
-  setChip('apsChip','Autodesk: ikke innlogget','warn');$('hubSelect').disabled=true;$('projectSelect').disabled=true;$('reloadForma').disabled=true;renderEmpty('Logg inn på Autodesk for å hente data.');selectedItem=null;updateSelection();log('Autodesk-økt fjernet lokalt.');
+  setChip('apsChip','Autodesk: ikke innlogget','warn');$('hubSelect').disabled=true;$('projectSelect').disabled=true;$('reloadForma').disabled=true;
+  clearFormaSelection();renderEmpty('Logg inn på Autodesk for å hente data.');log('Autodesk-økt fjernet lokalt.');
 }
 async function afterApsLogin(){setChip('apsChip','Autodesk: tilkoblet','ok');setChip('helperChip','OAuth helper: OK','ok');$('hubSelect').disabled=false;$('reloadForma').disabled=false;log('Autodesk APS-innlogging fullført.','ok');await loadHubs();}
 async function apsJson(path){const token=await getApsToken();const r=await fetch(APS_BASE+path,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error(`Autodesk API ${r.status}: ${await r.text()}`);return r.json();}
@@ -243,33 +253,175 @@ async function loadHubs(){
   catch(e){log(e.message,'error');log('Kontroller at APS Client ID er lagt til som Custom Integration i riktig Forma-hub.','error');}
 }
 async function loadProjects(hubId){
-  currentHub=hubId;currentProject=null;currentFolder=null;folderStack=[];selectedItem=null;updateSelection();$('projectSelect').disabled=true;$('projectSelect').innerHTML='<option>Laster …</option>';
-  if(!hubId){$('projectSelect').innerHTML='<option>Velg hub</option>';return;}
+  currentHub=hubId;currentProject=null;currentFolder=null;folderStack=[];clearFormaSelection();$('projectSelect').disabled=true;$('projectSelect').innerHTML='<option>Laster …</option>';
+  if(!hubId){$('projectSelect').innerHTML='<option>Velg hub</option>';renderEmpty('Velg hub.');return;}
   try{const j=await apsJson(`/project/v1/hubs/${encodeURIComponent(hubId)}/projects`);const ps=j.data||[];$('projectSelect').innerHTML='<option value="">Velg prosjekt …</option>'+ps.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.attributes?.name||p.id)}</option>`).join('');$('projectSelect').disabled=false;log(`Fant ${ps.length} Forma-prosjekt(er).`,'ok');}catch(e){log(e.message,'error');}
 }
-async function selectProject(projectId){currentProject=projectId;currentFolder=null;folderStack=[];selectedItem=null;updateSelection();if(!projectId){renderEmpty('Velg et Forma-prosjekt.');return;}await loadTopFolders();}
+async function selectProject(projectId){
+  currentProject=projectId;currentFolder=null;folderStack=[];clearFormaSelection();
+  if(!projectId){renderEmpty('Velg et Forma-prosjekt.');return;}
+  await loadTopFolders();
+}
 async function loadTopFolders(){
-  try{const j=await apsJson(`/project/v1/hubs/${encodeURIComponent(currentHub)}/projects/${encodeURIComponent(currentProject)}/topFolders`);currentFolder=null;folderStack=[];renderBreadcrumbs();renderItems(j.data||[]);$('refreshFolder').disabled=false;$('goUp').disabled=true;log('Topmapper lastet fra Forma Data Management.','ok');}catch(e){log(e.message,'error');}
+  try{
+    const j=await apsJson(`/project/v1/hubs/${encodeURIComponent(currentHub)}/projects/${encodeURIComponent(currentProject)}/topFolders`);
+    currentFolder=null;folderStack=[];renderBreadcrumbs();renderItems(j.data||[]);$('refreshFolder').disabled=false;$('goUp').disabled=true;log('Topmapper lastet fra Forma Data Management.','ok');
+  }catch(e){log(e.message,'error');}
 }
 async function openFolder(folder){
-  try{if(currentFolder)folderStack.push(currentFolder);currentFolder={id:folder.id,name:folder.attributes?.displayName||folder.attributes?.name||'Mappe'};const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(folder.id)}/contents`);renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=false;$('refreshFolder').disabled=false;selectedItem=null;updateSelection();}catch(e){log(e.message,'error');}
+  try{
+    if(currentFolder)folderStack.push(currentFolder);
+    currentFolder={id:folder.id,name:folder.attributes?.displayName||folder.attributes?.name||'Mappe'};
+    const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(folder.id)}/contents`);
+    renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=false;$('refreshFolder').disabled=false;
+  }catch(e){log(e.message,'error');}
 }
-async function refreshFolder(){if(!currentProject)return;if(!currentFolder)return loadTopFolders();try{const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(currentFolder.id)}/contents`);renderItems(j.data||[]);log('Forma-mappen er oppdatert.');}catch(e){log(e.message,'error');}}
+async function refreshFolder(){
+  if(!currentProject)return;
+  if(!currentFolder)return loadTopFolders();
+  try{
+    const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(currentFolder.id)}/contents`);
+    renderItems(j.data||[]);log('Forma-mappen er oppdatert.');
+  }catch(e){log(e.message,'error');}
+}
 async function goUp(){
-  if(!currentFolder)return;const prev=folderStack.pop();if(!prev)return loadTopFolders();currentFolder=prev;
-  try{const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(prev.id)}/contents`);renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=folderStack.length===0;selectedItem=null;updateSelection();}catch(e){log(e.message,'error');}
+  if(!currentFolder)return;
+  const prev=folderStack.pop();
+  if(!prev)return loadTopFolders();
+  currentFolder=prev;
+  try{
+    const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/folders/${encodeURIComponent(prev.id)}/contents`);
+    renderBreadcrumbs();renderItems(j.data||[]);$('goUp').disabled=folderStack.length===0;
+  }catch(e){log(e.message,'error');}
 }
-function renderBreadcrumbs(){const el=$('breadcrumbs');const projectName=$('projectSelect').selectedOptions[0]?.textContent||'Prosjekt';let html=`<button class="crumb" data-root="1">${escapeHtml(projectName)}</button>`;for(const f of folderStack)html+=`<span class="muted">›</span><span class="badge">${escapeHtml(f.name)}</span>`;if(currentFolder)html+=`<span class="muted">›</span><span class="badge model">${escapeHtml(currentFolder.name)}</span>`;el.innerHTML=html;el.querySelector('[data-root]')?.addEventListener('click',loadTopFolders);}
-function renderEmpty(text){$('fileBody').innerHTML=`<tr><td colspan="4" class="muted">${escapeHtml(text)}</td></tr>`;$('breadcrumbs').innerHTML='<span class="muted">'+escapeHtml(text)+'</span>';}
+function renderBreadcrumbs(){
+  const el=$('breadcrumbs'),projectName=$('projectSelect').selectedOptions[0]?.textContent||'Prosjekt';
+  let out=`<button class="crumb" data-root="1">${escapeHtml(projectName)}</button>`;
+  for(const f of folderStack)out+=`<span class="muted">›</span><span class="badge">${escapeHtml(f.name)}</span>`;
+  if(currentFolder)out+=`<span class="muted">›</span><span class="badge model">${escapeHtml(currentFolder.name)}</span>`;
+  el.innerHTML=out;el.querySelector('[data-root]')?.addEventListener('click',loadTopFolders);
+}
+function renderEmpty(text){
+  currentFormaItems=[];currentFormaEntries=[];
+  $('fileBody').innerHTML=`<tr><td colspan="5" class="muted">${escapeHtml(text)}</td></tr>`;
+  $('breadcrumbs').innerHTML='<span class="muted">'+escapeHtml(text)+'</span>';
+  updateSelectAllCheckbox();
+}
+function updateSelectAllCheckbox(){
+  const el=$('selectVisibleFiles');if(!el)return;
+  if(!currentFormaItems.length){el.checked=false;el.indeterminate=false;el.disabled=true;return;}
+  el.disabled=false;
+  const count=currentFormaItems.filter(x=>selectedItems.has(x.id)).length;
+  el.checked=count===currentFormaItems.length;
+  el.indeterminate=count>0&&count<currentFormaItems.length;
+}
+function toggleFormaItem(item,checked){
+  if(checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);
+  updateSelection();updateSelectAllCheckbox();
+  const row=$('fileBody').querySelector(`tr[data-id="${CSS.escape(item.id)}"]`);
+  if(row)row.classList.toggle('selected',checked);
+}
 function renderItems(items){
+  currentFormaEntries=items;
   const folders=items.filter(x=>x.type==='folders'),files=items.filter(x=>x.type==='items'),list=[...folders,...files];
-  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="4" class="muted">Mappen er tom.</td></tr>';return;}
-  $('fileBody').innerHTML=list.map((x,i)=>{const folder=x.type==='folders';const name=x.attributes?.displayName||x.attributes?.name||'(uten navn)';const ext=folder?'':extOf(name);const model=MODEL_EXTS.has(ext);const updated=x.attributes?.lastModifiedTime||x.attributes?.createTime||x.attributes?.lastModifiedTimeRollup;return `<tr class="item" data-i="${i}"><td><span class="name">${folder?'📁 ':'📄 '}${escapeHtml(name)}</span></td><td>${folder?'Mappe':(model?'<span class="badge model">Modell</span>':'Fil')}</td><td class="muted">${escapeHtml(fmtDate(updated))}</td><td>${folder?'–':`<span class="badge">${escapeHtml((ext||'?').toUpperCase())}</span>`}</td></tr>`;}).join('');
-  [...$('fileBody').querySelectorAll('tr[data-i]')].forEach(row=>row.addEventListener('click',()=>{const x=list[Number(row.dataset.i)];if(x.type==='folders'){openFolder(x);return;}[...$('fileBody').querySelectorAll('tr.item')].forEach(r=>r.classList.remove('selected'));row.classList.add('selected');selectedItem=x;updateSelection();}));
+  currentFormaItems=files;
+  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="5" class="muted">Mappen er tom.</td></tr>';updateSelectAllCheckbox();return;}
+  $('fileBody').innerHTML=list.map((x,i)=>{
+    const folder=x.type==='folders',name=x.attributes?.displayName||x.attributes?.name||'(uten navn)',ext=folder?'':extOf(name),model=MODEL_EXTS.has(ext),updated=x.attributes?.lastModifiedTime||x.attributes?.createTime||x.attributes?.lastModifiedTimeRollup,checked=!folder&&selectedItems.has(x.id);
+    return `<tr class="item ${checked?'selected':''}" data-i="${i}" data-id="${escapeHtml(x.id)}"><td class="checkcell">${folder?'':`<input type="checkbox" class="file-check" ${checked?'checked':''} aria-label="Velg ${escapeHtml(name)}">`}</td><td><span class="name">${folder?'📁 ':'📄 '}${escapeHtml(name)}</span></td><td>${folder?'Mappe':(model?'<span class="badge model">Modell</span>':'Fil')}</td><td class="muted">${escapeHtml(fmtDate(updated))}</td><td>${folder?'–':`<span class="badge">${escapeHtml((ext||'?').toUpperCase())}</span>`}</td></tr>`;
+  }).join('');
+  [...$('fileBody').querySelectorAll('tr[data-i]')].forEach(row=>{
+    const item=list[Number(row.dataset.i)],box=row.querySelector('.file-check');
+    if(box)box.addEventListener('click',e=>{e.stopPropagation();toggleFormaItem(item,box.checked);});
+    row.addEventListener('click',()=>{
+      if(item.type==='folders'){openFolder(item);return;}
+      const next=!selectedItems.has(item.id);if(box)box.checked=next;toggleFormaItem(item,next);
+    });
+  });
+  updateSelectAllCheckbox();
 }
 function updateSelection(){
-  const box=$('selectedBox');if(!selectedItem){box.className='selection muted';box.textContent='Velg en modellfil i listen over.';$('syncBtn').disabled=true;return;}
-  const name=selectedItem.attributes?.displayName||selectedItem.attributes?.name||'(uten navn)',ext=extOf(name),model=MODEL_EXTS.has(ext);box.className='selection';box.innerHTML=`<b>${escapeHtml(name)}</b><br><span class="muted">Forma item: ${escapeHtml(selectedItem.id)} · format: ${(ext||'?').toUpperCase()}</span>${model?'':'<br><span style="color:#b54708">Dette formatet er ikke i modellfilteret. Filen kan kopieres, men Trimble 3D-prosessering er ikke garantert.</span>'}`;$('syncBtn').disabled=false;
+  const box=$('selectedBox'),count=selectedItems.size;
+  $('selectedHeading').textContent=`Valgte modeller (${count})`;
+  $('clearSelected').disabled=count===0;
+  $('syncBtn').disabled=count===0||!trimbleProjectData;
+  $('syncBtn').textContent=count>1?`Kopier ${count} valgte filer til Trimble Connect`:'Kopier valgt fil til Trimble Connect';
+  if(!count){box.className='selection muted';box.textContent='Huk av én eller flere modellfiler i listen over.';return;}
+  box.className='selection';
+  box.innerHTML='<div class="selected-list">'+[...selectedItems.values()].map(item=>{
+    const name=item.attributes?.displayName||item.attributes?.name||'(uten navn)',ext=extOf(name);
+    return `<div class="selected-file"><span><b>${escapeHtml(name)}</b> <span class="badge">${escapeHtml((ext||'?').toUpperCase())}</span></span><button type="button" class="danger remove-selected" data-id="${escapeHtml(item.id)}">Fjern</button></div>`;
+  }).join('')+'</div>';
+  [...box.querySelectorAll('.remove-selected')].forEach(btn=>btn.addEventListener('click',()=>{
+    selectedItems.delete(btn.dataset.id);updateSelection();
+    if(currentFormaEntries.length)renderItems(currentFormaEntries);
+  }));
+}
+
+async function loadTrimbleRoot(){
+  if(!TC_PROJECT)return;
+  const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
+  const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,onStatus:msg=>log(msg)});
+  trimbleProjectData=data.project;trimbleCurrentFolder=null;trimbleFolderStack=[];trimbleTargetFolder=null;trimbleCurrentEntries=data.entries||[];
+  $('targetPath').value='/';renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=true;$('trimbleRefresh').disabled=false;updateSelection();
+  log('Trimble Connect-mappestruktur lastet.','ok');
+}
+async function openTrimbleFolder(folder){
+  try{
+    if(trimbleCurrentFolder)trimbleFolderStack.push(trimbleCurrentFolder);
+    trimbleCurrentFolder=folder;trimbleTargetFolder=folder;
+    const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
+    const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder,onStatus:()=>{}});
+    trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;$('trimbleRefresh').disabled=false;updateSelection();
+  }catch(e){log(e.message||String(e),'error');}
+}
+async function trimbleGoUp(){
+  if(!trimbleCurrentFolder)return;
+  const prev=trimbleFolderStack.pop();
+  if(!prev)return loadTrimbleRoot();
+  trimbleCurrentFolder=prev;trimbleTargetFolder=prev;
+  try{
+    const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
+    const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder:prev,onStatus:()=>{}});
+    trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=trimbleFolderStack.length===0;updateSelection();
+  }catch(e){log(e.message||String(e),'error');}
+}
+async function refreshTrimbleFolder(){
+  try{
+    if(!trimbleCurrentFolder)return loadTrimbleRoot();
+    const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
+    const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder:trimbleCurrentFolder,onStatus:()=>{}});
+    trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];renderTrimbleEntries();log('Trimble-mappen er oppdatert.','ok');
+  }catch(e){log(e.message||String(e),'error');}
+}
+function updateTrimbleTargetPath(){
+  const names=[...trimbleFolderStack.map(f=>f.name),trimbleCurrentFolder?.name].filter(Boolean);
+  $('targetPath').value=names.length?'/'+names.join('/'):'/';
+}
+function renderTrimbleBreadcrumbs(){
+  const el=$('trimbleBreadcrumbs'),projectName=TC_PROJECT?.name||'Trimble-prosjekt';
+  let out=`<button class="crumb" data-trimble-root="1">${escapeHtml(projectName)}</button>`;
+  for(const f of trimbleFolderStack)out+=`<span class="muted">›</span><span class="badge">${escapeHtml(f.name||'Mappe')}</span>`;
+  if(trimbleCurrentFolder)out+=`<span class="muted">›</span><span class="badge model">${escapeHtml(trimbleCurrentFolder.name||'Mappe')}</span>`;
+  el.innerHTML=out;el.querySelector('[data-trimble-root]')?.addEventListener('click',loadTrimbleRoot);
+}
+function renderTrimbleEntries(){
+  const list=trimbleCurrentEntries||[];
+  if(!list.length){$('trimbleFolderBody').innerHTML='<tr><td colspan="2" class="muted">Mappen er tom.</td></tr>';return;}
+  const sorted=[...list].sort((a,b)=>{
+    const af=String(a.type||'').toUpperCase()==='FOLDER'?0:1,bf=String(b.type||'').toUpperCase()==='FOLDER'?0:1;
+    return af-bf||String(a.name||'').localeCompare(String(b.name||''),'nb');
+  });
+  $('trimbleFolderBody').innerHTML=sorted.map((entry,i)=>{
+    const folder=String(entry.type||'').toUpperCase()==='FOLDER';
+    return `<tr class="${folder?'item':''}" data-ti="${i}"><td><span class="name">${folder?'📁 ':'📄 '}${escapeHtml(entry.name||'(uten navn)')}</span></td><td>${folder?'<span class="badge model">Mappe</span>':'Fil'}</td></tr>`;
+  }).join('');
+  [...$('trimbleFolderBody').querySelectorAll('tr[data-ti]')].forEach(row=>{
+    const entry=sorted[Number(row.dataset.ti)];
+    if(String(entry.type||'').toUpperCase()==='FOLDER')row.addEventListener('click',()=>openTrimbleFolder(entry));
+  });
 }
 
 async function getLatestVersion(item){const j=await apsJson(`/data/v1/projects/${encodeURIComponent(currentProject)}/items/${encodeURIComponent(item.id)}/tip`);return j.data;}
@@ -280,26 +432,50 @@ async function getAutodeskDownload(version){
   const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('Kunne ikke opprette Autodesk nedlastingslenke: '+r.status+' '+await r.text());const j=await r.json();const signed=j.url||j.data?.url||j.signedUrl;if(!signed)throw new Error('Autodesk svarte uten signert nedlastings-URL.');return signed;
 }
 async function syncSelected(){
-  if(!selectedItem)return;const name=selectedItem.attributes?.displayName||selectedItem.attributes?.name||'forma-model';$('syncBtn').disabled=true;setProgress(5);
+  const items=[...selectedItems.values()];
+  if(!items.length)return;
+  $('syncBtn').disabled=true;$('showBtn').disabled=true;setProgress(0);
+  const successes=[],failures=[];
   try{
-    log('Henter siste versjon av '+name+' fra Forma …');const version=await getLatestVersion(selectedItem);setProgress(15);
-    const signed=await getAutodeskDownload(version);setProgress(25);log('Autodesk-nedlasting klar. Henter filinnhold …');
-    const src=await fetch(signed);if(!src.ok)throw new Error('Nedlasting fra Autodesk storage feilet: '+src.status);const blob=await src.blob();setProgress(55);
-    const mb=blob.size/1024/1024;log(`Fil mottatt fra Autodesk: ${mb.toFixed(1)} MB.`);if(mb>750)log('Stor modell: nettleseroverføringen kan bruke mye minne. Server-side streaming anbefales for produksjon.');
-    const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge(),targetPath=$('targetPath').value.trim()||'/';setProgress(65);
-    const result=await tcps.uploadBlob({token,projectId:TC_PROJECT.id,targetPath,blob,fileName:name,mimeType:blob.type,onStatus:msg=>log(msg)});
-    setProgress(100);lastSyncedName=result.name||name;lastSyncedFileId=result.fileId||null;$('showBtn').disabled=false;log('Filen er kopiert til Trimble Connect: '+lastSyncedName,'ok');
-    log('Trimble prosesserer nå modellfilen. Når den er klar, bruk «Finn og vis i Trimble 3D».');
-  }catch(e){setProgress(0);log(e.message||String(e),'error');}
-  finally{$('syncBtn').disabled=false;}
+    const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge(),targetPath=$('targetPath').value||'/';
+    log(`Starter kopiering av ${items.length} fil(er) til ${targetPath}.`);
+    for(let i=0;i<items.length;i++){
+      const item=items[i],name=item.attributes?.displayName||item.attributes?.name||'forma-model',base=i/items.length*100;
+      try{
+        setProgress(base+3);log(`[${i+1}/${items.length}] Henter siste versjon av ${name} …`);
+        const version=await getLatestVersion(item);setProgress(base+10/items.length);
+        const signed=await getAutodeskDownload(version);log(`[${i+1}/${items.length}] Laster ned fra Autodesk Forma …`);
+        const src=await fetch(signed);if(!src.ok)throw new Error('Nedlasting fra Autodesk storage feilet: '+src.status);
+        const blob=await src.blob(),mb=blob.size/1024/1024;
+        log(`[${i+1}/${items.length}] ${name}: ${mb.toFixed(1)} MB mottatt.`);
+        const result=await tcps.uploadBlob({token,projectId:TC_PROJECT.id,targetPath,targetFolder:trimbleTargetFolder,blob,fileName:name,mimeType:blob.type,onStatus:msg=>log(`[${i+1}/${items.length}] ${msg}`)});
+        successes.push({item,result,name});selectedItems.delete(item.id);
+        lastSyncedModels.push({name:result.name||name,fileId:result.fileId||null});
+        log(`[${i+1}/${items.length}] Kopiert: ${result.name||name}`,'ok');
+      }catch(e){
+        failures.push({item,name,error:e.message||String(e)});log(`[${i+1}/${items.length}] ${name}: ${e.message||String(e)}`,'error');
+      }
+      setProgress((i+1)/items.length*100);
+    }
+    if(successes.length)log(`${successes.length} fil(er) ble kopiert til Trimble Connect.`,'ok');
+    if(failures.length)log(`${failures.length} fil(er) feilet og er fortsatt valgt slik at de kan prøves på nytt.`,'error');
+    $('showBtn').disabled=lastSyncedModels.length===0;
+    if(successes.length)log('Trimble prosesserer modellfilene. Når de er klare kan «Vis kopierte modeller i Trimble 3D» brukes.');
+  }finally{
+    if(currentFormaEntries.length)renderItems(currentFormaEntries);else updateSelection();
+    $('syncBtn').disabled=selectedItems.size===0||!trimbleProjectData;
+  }
 }
 async function showSynced(){
-  if(!TC_API||!lastSyncedName){log('Ingen synkronisert modell å vise ennå.','error');return;}
+  if(!TC_API||!lastSyncedModels.length){log('Ingen kopierte modeller å vise ennå.','error');return;}
   try{
-    log('Søker etter '+lastSyncedName+' i Trimble 3D-modellisten …');const models=await TC_API.viewer.getModels();
-    const target=models.find(m=>lastSyncedFileId&&m.id===lastSyncedFileId)||models.find(m=>normalizeName(m.name)===normalizeName(lastSyncedName))||models.find(m=>normalizeName(m.name).includes(normalizeName(lastSyncedName)));
-    if(!target)throw new Error('Modellen er ikke tilgjengelig i Trimble 3D ennå. Filen kan fortsatt være under prosessering. Åpne/utvid eventuelt målmappen i Trimble-modelltreet og prøv igjen.');
-    await TC_API.viewer.toggleModel(target.id,true,true);log('Modellen er lastet i Trimble 3D: '+target.name,'ok');
+    const models=await TC_API.viewer.getModels();let shown=0;
+    for(const synced of lastSyncedModels){
+      const target=models.find(m=>synced.fileId&&m.id===synced.fileId)||models.find(m=>normalizeName(m.name)===normalizeName(synced.name))||models.find(m=>normalizeName(m.name).includes(normalizeName(synced.name)));
+      if(target){await TC_API.viewer.toggleModel(target.id,true,true);shown++;}
+    }
+    if(!shown)throw new Error('Ingen av de kopierte modellene er tilgjengelige i Trimble 3D ennå. De kan fortsatt være under prosessering.');
+    log(`${shown} kopiert(e) modell(er) er lastet i Trimble 3D.`,'ok');
   }catch(e){log(e.message||String(e),'error');}
 }
 
@@ -346,7 +522,11 @@ try{
 $('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('norconsult_shared_aps_client_id')||'';
 $('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=()=>{window.open('http://localhost:3000/','formaOauthHelper','width=560,height=420,resizable=yes,scrollbars=yes');log('Åpnet localhost-helper. Hvis siden ikke åpner, start local-helper først.');};$('logoutAps').onclick=logoutAps;
 $('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
-$('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;$('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
+$('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;
+$('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries);updateSelection();};
+$('clearSelected').onclick=()=>{selectedItems.clear();if(currentFormaEntries.length)renderItems(currentFormaEntries);else updateSelection();};
+$('trimbleGoUp').onclick=trimbleGoUp;$('trimbleRefresh').onclick=refreshTrimbleFolder;
+$('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
 
 (async()=>{
   await initTrimble();
