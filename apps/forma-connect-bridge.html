@@ -31,19 +31,20 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
     <span id="tcChip" class="chip warn">Trimble: kobler til …</span>
     <span id="sdkChip" class="chip warn">Trimble SDK: laster …</span>
     <span id="apsChip" class="chip warn">Autodesk: ikke innlogget</span>
+    <span id="helperChip" class="chip warn">OAuth helper: localhost:3000</span>
     <span id="projectChip" class="chip">Trimble-prosjekt: –</span>
   </div>
 
   <div class="grid">
     <aside>
       <section class="card">
-        <h2>1. Autodesk APS-oppsett</h2>
+        <h2>1. Autodesk Forma-tilkobling</h2>
         <div class="stack">
-          <div><div class="label">APS Client ID</div><input id="clientId" autocomplete="off" placeholder="Lim inn Client ID for Autodesk APS-appen"></div>
-          <div class="notice">Opprett APS-appen som <b>Desktop, Mobile, Single-Page App</b> og bruk PKCE. Registrer callback-adressen nøyaktig som vist under. Legg deretter Client ID til som <b>Custom Integration</b> i den aktuelle Forma-huben.</div>
-          <div><div class="label">Callback URL</div><input id="callbackUrl" readonly></div>
-          <div class="row"><button id="saveClient" class="secondary">Lagre Client ID</button><button id="loginAps">Logg inn Autodesk</button><button id="logoutAps" class="danger">Logg ut</button></div>
-          <div class="help">Ingen Autodesk Client Secret lagres i extensionen. Client ID lagres kun lokalt i nettleseren.</div>
+          <div><div class="label">Norconsult felles APS Client ID</div><input id="clientId" autocomplete="off" placeholder="Lim inn felles Client ID fra IT"></div>
+          <div class="notice">Denne extensionen bruker Norconsult sin felles Autodesk APS-registrering med <b>Authorization Code + PKCE</b>. Før innlogging må den lokale OAuth-helperen kjøre på <b>localhost:3000</b>.</div>
+          <div><div class="label">Registrert callback URL</div><input id="callbackUrl" readonly></div>
+          <div class="row"><button id="saveClient" class="secondary">Lagre Client ID</button><button id="loginAps">Logg inn Autodesk</button><button id="testHelper" class="secondary">Test localhost-helper</button><button id="logoutAps" class="danger">Logg ut</button></div>
+          <div class="help">Client ID er ikke en hemmelighet. Ingen Autodesk Client Secret brukes. OAuth-helperen tar kun imot callbacken og sender autorisasjonskoden tilbake til extensionen.</div>
         </div>
       </section>
 
@@ -96,7 +97,8 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
 
 <script>
 const APS_BASE='https://developer.api.autodesk.com';
-const APS_CALLBACK='https://trekasb.github.io/BIM_proto/apps/forma-auth-callback.html';
+const APS_CALLBACK='http://localhost:3000/api/forge/callback/oauth';
+const APS_CALLBACK_ORIGIN='http://localhost:3000';
 const MODEL_EXTS=new Set(['ifc','rvt','dwg','dxf','skp','nwd','nwc','trb','dgn','obj']);
 let TC_API=null,TC_PROJECT=null,TC_TOKEN=null,APS_TOKEN=null;
 let currentHub=null,currentProject=null,currentFolder=null,folderStack=[],selectedItem=null,lastSyncedName=null,lastSyncedFileId=null;
@@ -174,7 +176,8 @@ async function loginAps(){
   url.searchParams.set('response_type','code');url.searchParams.set('client_id',clientId);url.searchParams.set('redirect_uri',APS_CALLBACK);url.searchParams.set('scope','data:read');url.searchParams.set('code_challenge',challenge);url.searchParams.set('code_challenge_method','S256');url.searchParams.set('state',state);
   const popup=window.open(url.toString(),'apsFormaLogin','width=720,height=760,resizable=yes,scrollbars=yes');
   if(!popup)throw new Error('Nettleseren blokkerte Autodesk-innloggingsvinduet. Tillat popups og prøv igjen.');
-  log('Autodesk-innlogging åpnet.');
+  setChip('helperChip','OAuth helper: venter på callback','warn');
+  log('Autodesk-innlogging åpnet. OAuth callback går via http://localhost:3000.');
 }
 async function exchangeApsCode(code,state){
   const expected=sessionStorage.getItem('aps_oauth_state');if(!state||state!==expected)throw new Error('OAuth state stemmer ikke. Innloggingen ble avvist.');
@@ -194,7 +197,7 @@ function logoutAps(){
   APS_TOKEN=null;['aps_access_token','aps_refresh_token','aps_expires_at','aps_pkce_verifier','aps_oauth_state'].forEach(k=>sessionStorage.removeItem(k));
   setChip('apsChip','Autodesk: ikke innlogget','warn');$('hubSelect').disabled=true;$('projectSelect').disabled=true;$('reloadForma').disabled=true;renderEmpty('Logg inn på Autodesk for å hente data.');selectedItem=null;updateSelection();log('Autodesk-økt fjernet lokalt.');
 }
-async function afterApsLogin(){setChip('apsChip','Autodesk: tilkoblet','ok');$('hubSelect').disabled=false;$('reloadForma').disabled=false;log('Autodesk APS-innlogging fullført.','ok');await loadHubs();}
+async function afterApsLogin(){setChip('apsChip','Autodesk: tilkoblet','ok');setChip('helperChip','OAuth helper: OK','ok');$('hubSelect').disabled=false;$('reloadForma').disabled=false;log('Autodesk APS-innlogging fullført.','ok');await loadHubs();}
 async function apsJson(path){const token=await getApsToken();const r=await fetch(APS_BASE+path,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error(`Autodesk API ${r.status}: ${await r.text()}`);return r.json();}
 
 async function loadHubs(){
@@ -263,12 +266,16 @@ async function showSynced(){
 }
 
 window.addEventListener('message',async ev=>{
-  if(ev.origin!==location.origin||ev.data?.type!=='NORCONSULT_APS_OAUTH_CALLBACK')return;
-  try{if(ev.data.error)throw new Error(ev.data.error_description||ev.data.error);await exchangeApsCode(ev.data.code,ev.data.state);}catch(e){log(e.message||String(e),'error');setChip('apsChip','Autodesk: innlogging feilet','bad');}
+  if(ev.origin!==APS_CALLBACK_ORIGIN||ev.data?.type!=='NORCONSULT_APS_OAUTH_CALLBACK')return;
+  try{
+    setChip('helperChip','OAuth helper: callback mottatt','ok');
+    if(ev.data.error)throw new Error(ev.data.error_description||ev.data.error);
+    await exchangeApsCode(ev.data.code,ev.data.state);
+  }catch(e){log(e.message||String(e),'error');setChip('apsChip','Autodesk: innlogging feilet','bad');}
 });
 
 $('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('norconsult_aps_client_id')||'';
-$('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('logoutAps').onclick=logoutAps;
+$('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=()=>{window.open('http://localhost:3000/','formaOauthHelper','width=560,height=420,resizable=yes,scrollbars=yes');log('Åpnet localhost-helper. Hvis siden ikke åpner, start local-helper først.');};$('logoutAps').onclick=logoutAps;
 $('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
 $('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;$('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
 
