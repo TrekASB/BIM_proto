@@ -64,7 +64,7 @@ app.get('/api/forge/callback/status', (req, res) => {
   res.json({ ready:true, payload });
 });
 
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, () => {
   console.log('');
   console.log('Norconsult Forma OAuth Helper');
   console.log('Kjører på: http://localhost:' + PORT);
