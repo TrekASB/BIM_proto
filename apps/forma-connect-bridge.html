@@ -168,6 +168,25 @@ function randomString(len=64){const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk
 async function sha256b64url(value){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 function getClientId(){return $('clientId').value.trim();}
 function saveClient(){const id=getClientId();if(!id){log('Skriv inn APS Client ID.','error');return;}localStorage.setItem('norconsult_shared_aps_client_id',id);log('APS Client ID lagret lokalt i nettleseren.','ok');}
+async function waitForLocalApsCallback(state){
+  const deadline=Date.now()+120000;
+  while(Date.now()<deadline){
+    try{
+      const r=await fetch('http://localhost:3000/api/forge/callback/status?state='+encodeURIComponent(state),{cache:'no-store'});
+      if(r.ok){
+        const data=await r.json();
+        if(data&&data.ready&&data.payload){
+          await handleApsCallback(data.payload);
+          return;
+        }
+      }
+    }catch(_){}
+    await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  log('Ingen Autodesk-callback mottatt fra localhost-helper innen 2 minutter. Kontroller at helperen kjører og prøv igjen.','error');
+  setChip('helperChip','OAuth helper: ingen callback','bad');
+}
+
 async function loginAps(){
   const clientId=getClientId();if(!clientId){log('APS Client ID mangler.','error');return;}saveClient();
   const verifier=randomString(72),challenge=await sha256b64url(verifier),state=randomString(32);
@@ -178,6 +197,7 @@ async function loginAps(){
   if(!popup)throw new Error('Nettleseren blokkerte Autodesk-innloggingsvinduet. Tillat popups og prøv igjen.');
   setChip('helperChip','OAuth helper: venter på callback','warn');
   log('Autodesk-innlogging åpnet. OAuth callback går via http://localhost:3000.');
+  waitForLocalApsCallback(state);
 }
 async function exchangeApsCode(code,state){
   const expected=sessionStorage.getItem('aps_oauth_state');if(!state||state!==expected)throw new Error('OAuth state stemmer ikke. Innloggingen ble avvist.');
