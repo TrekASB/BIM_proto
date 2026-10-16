@@ -1,0 +1,15 @@
+{
+  "name": "bim-proto-forma-oauth-helper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local OAuth callback relay for the Forma -> Trimble Connect extension",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
