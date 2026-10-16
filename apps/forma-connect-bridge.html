@@ -167,7 +167,7 @@ async function requestTrimbleToken(wait=true){
 function randomString(len=64){const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';const bytes=crypto.getRandomValues(new Uint8Array(len));return Array.from(bytes,b=>chars[b%chars.length]).join('');}
 async function sha256b64url(value){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 function getClientId(){return $('clientId').value.trim();}
-function saveClient(){const id=getClientId();if(!id){log('Skriv inn APS Client ID.','error');return;}localStorage.setItem('norconsult_aps_client_id',id);log('APS Client ID lagret lokalt i nettleseren.','ok');}
+function saveClient(){const id=getClientId();if(!id){log('Skriv inn APS Client ID.','error');return;}localStorage.setItem('norconsult_shared_aps_client_id',id);log('APS Client ID lagret lokalt i nettleseren.','ok');}
 async function loginAps(){
   const clientId=getClientId();if(!clientId){log('APS Client ID mangler.','error');return;}saveClient();
   const verifier=randomString(72),challenge=await sha256b64url(verifier),state=randomString(32);
@@ -265,16 +265,39 @@ async function showSynced(){
   }catch(e){log(e.message||String(e),'error');}
 }
 
-window.addEventListener('message',async ev=>{
-  if(ev.origin!==APS_CALLBACK_ORIGIN||ev.data?.type!=='NORCONSULT_APS_OAUTH_CALLBACK')return;
+async function handleApsCallback(payload){
+  if(!payload||payload.type!=='NORCONSULT_APS_OAUTH_CALLBACK')return;
   try{
     setChip('helperChip','OAuth helper: callback mottatt','ok');
-    if(ev.data.error)throw new Error(ev.data.error_description||ev.data.error);
-    await exchangeApsCode(ev.data.code,ev.data.state);
+    if(payload.error)throw new Error(payload.error_description||payload.error);
+    await exchangeApsCode(payload.code,payload.state);
   }catch(e){log(e.message||String(e),'error');setChip('apsChip','Autodesk: innlogging feilet','bad');}
+}
+
+window.addEventListener('message',ev=>{
+  if(ev.origin!==location.origin)return;
+  handleApsCallback(ev.data);
 });
 
-$('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('norconsult_aps_client_id')||'';
+try{
+  const apsChannel=new BroadcastChannel('norconsult-aps-oauth');
+  apsChannel.onmessage=ev=>handleApsCallback(ev.data);
+}catch(_){}
+
+window.addEventListener('storage',ev=>{
+  if(ev.key!=='norconsult_aps_oauth_callback'||!ev.newValue)return;
+  try{handleApsCallback(JSON.parse(ev.newValue));}catch(_){}
+});
+
+try{
+  const pending=localStorage.getItem('norconsult_aps_oauth_callback');
+  if(pending){
+    localStorage.removeItem('norconsult_aps_oauth_callback');
+    handleApsCallback(JSON.parse(pending));
+  }
+}catch(_){};
+
+$('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('norconsult_shared_aps_client_id')||'';
 $('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=()=>{window.open('http://localhost:3000/','formaOauthHelper','width=560,height=420,resizable=yes,scrollbars=yes');log('Åpnet localhost-helper. Hvis siden ikke åpner, start local-helper først.');};$('logoutAps').onclick=logoutAps;
 $('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
 $('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;$('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
