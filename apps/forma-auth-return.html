@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Autodesk Forma – tilbake til Trimble Connect</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f3f5f8;color:#101828;padding:32px}
+.card{max-width:680px;margin:40px auto;background:#fff;border:1px solid #d9e0ea;border-radius:14px;padding:24px;box-shadow:0 2px 10px rgba(16,24,40,.08)}
+h1{font-size:21px;color:#0057b8;margin:0 0 10px}.ok{color:#067647}.bad{color:#b42318}
+</style>
+</head>
+<body>
+<div class="card"><h1>Autodesk Forma</h1><p id="msg">Fullfører innlogging …</p></div>
+<script>
+(() => {
+  const params=new URLSearchParams(location.hash.replace(/^#/,''));
+  const payload={
+    type:'NORCONSULT_APS_OAUTH_CALLBACK',
+    code:params.get('code'),
+    state:params.get('state'),
+    error:params.get('error'),
+    error_description:params.get('error_description'),
+    ts:Date.now()
+  };
+  history.replaceState({},'',location.pathname);
+  const msg=document.getElementById('msg');
+  try{
+    try{
+      const channel=new BroadcastChannel('norconsult-aps-oauth');
+      channel.postMessage(payload);
+      setTimeout(()=>channel.close(),1000);
+    }catch(_){}
+    localStorage.setItem('norconsult_aps_oauth_callback',JSON.stringify(payload));
+    if(window.opener){
+      try{window.opener.postMessage(payload,location.origin);}catch(_){}
+    }
+    msg.className=payload.error?'bad':'ok';
+    msg.textContent=payload.error?'Autodesk-innlogging feilet. Du kan lukke vinduet.':'Innlogging fullført. Går tilbake til Trimble Connect …';
+    setTimeout(()=>window.close(),900);
+  }catch(err){
+    msg.className='bad';
+    msg.textContent='Kunne ikke sende innloggingen tilbake til Trimble Connect: '+err.message;
+  }
+})();
+</script>
+</body>
+</html>
