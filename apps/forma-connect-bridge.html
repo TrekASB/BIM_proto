@@ -101,6 +101,7 @@ const APS_CALLBACK='http://localhost:3000/api/forge/callback/oauth';
 const APS_CALLBACK_ORIGIN='http://localhost:3000';
 const MODEL_EXTS=new Set(['ifc','rvt','dwg','dxf','skp','nwd','nwc','trb','dgn','obj']);
 let TC_API=null,TC_PROJECT=null,TC_TOKEN=null,APS_TOKEN=null;
+let APS_CALLBACK_BUSY=false,APS_CALLBACK_STATE_HANDLED=null;
 let currentHub=null,currentProject=null,currentFolder=null,folderStack=[],selectedItem=null,lastSyncedName=null,lastSyncedFileId=null;
 const $=id=>document.getElementById(id);
 
@@ -287,11 +288,19 @@ async function showSynced(){
 
 async function handleApsCallback(payload){
   if(!payload||payload.type!=='NORCONSULT_APS_OAUTH_CALLBACK')return;
+  if(payload.state&&payload.state===APS_CALLBACK_STATE_HANDLED)return;
+  if(APS_CALLBACK_BUSY)return;
+  APS_CALLBACK_BUSY=true;
   try{
     setChip('helperChip','OAuth helper: callback mottatt','ok');
-    if(payload.error)throw new Error(payload.error_description||payload.error);
+    if(payload.error){
+      APS_CALLBACK_STATE_HANDLED=payload.state||null;
+      throw new Error(payload.error_description||payload.error);
+    }
     await exchangeApsCode(payload.code,payload.state);
+    APS_CALLBACK_STATE_HANDLED=payload.state||null;
   }catch(e){log(e.message||String(e),'error');setChip('apsChip','Autodesk: innlogging feilet','bad');}
+  finally{APS_CALLBACK_BUSY=false;}
 }
 
 window.addEventListener('message',ev=>{
