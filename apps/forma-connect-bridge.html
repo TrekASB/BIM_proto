@@ -16,7 +16,7 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
 .notice{border:1px solid #b2ddff;background:#eff8ff;border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.5;color:#175cd3}.warning{border-color:#fedf89;background:#fffaeb;color:#b54708}
 .breadcrumb{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:0 0 10px}.crumb{border:0;background:#eef2f6;color:#344054;padding:5px 7px;font-size:11px;font-weight:700}
 .tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:430px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}th{position:sticky;top:0;background:#f8fafc;text-align:left;color:#475467;font-size:11px;padding:9px;border-bottom:1px solid var(--border)}td{padding:9px;border-bottom:1px solid #eef2f6;vertical-align:middle}tr.item{cursor:pointer}tr.item:hover{background:#f9fbff}tr.item.selected{background:#edf4ff}.name{font-weight:700}.muted{color:var(--muted)}.badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eef2f6;color:#475467}.badge.model{background:#edf4ff;color:#175cd3}
-.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.selection{padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);font-size:12px;line-height:1.5}.log{background:#101828;color:#d0d5dd;border-radius:10px;padding:10px;min-height:104px;max-height:190px;overflow:auto;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}.progress{height:7px;background:#eef2f6;border-radius:999px;overflow:hidden;margin-top:8px}.progress>span{display:block;width:0;height:100%;background:var(--blue);transition:width .25s}.smallbtn{padding:6px 8px;font-size:11px}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.selection{padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);font-size:12px;line-height:1.5}.checkcell{width:38px;text-align:center}.checkcell input[type="checkbox"]{width:16px;height:16px;margin:0;cursor:pointer}.selected-list{display:grid;gap:6px;max-height:170px;overflow:auto}.selected-file{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;background:#fff;border:1px solid #e4e7ec;border-radius:8px}.selected-file button{padding:4px 7px;font-size:10px}.target-browser{margin-top:8px}.target-browser .tablewrap{max-height:260px}.target-path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.log{background:#101828;color:#d0d5dd;border-radius:10px;padding:10px;min-height:104px;max-height:190px;overflow:auto;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}.progress{height:7px;background:#eef2f6;border-radius:999px;overflow:hidden;margin-top:8px}.progress>span{display:block;width:0;height:100%;background:var(--blue);transition:width .25s}.smallbtn{padding:6px 8px;font-size:11px}
 @media(max-width:920px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start}.logo{width:100px}}
 </style>
 </head>
@@ -60,9 +60,22 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
       <section class="card">
         <h2>3. Mål i Trimble Connect</h2>
         <div class="stack">
-          <div><div class="label">Målmappe</div><input id="targetPath" value="/" placeholder="/ eller f.eks. /01_Modeller/Forma"></div>
-          <div class="help">Mappen må allerede finnes i Trimble Connect. Bruk <b>/</b> for prosjektets rotmappe.</div>
-          <div class="notice warning">MVP-en flytter filen gjennom nettleseren. For svært store samferdselsmodeller bør neste versjon bruke en liten server-/cloud-funksjon som strømmer filen direkte mellom Autodesk og Trimble.</div>
+          <div><div class="label">Valgt målmappe</div><input id="targetPath" class="target-path" value="/" readonly></div>
+          <div class="help">Naviger i mappestrukturen under. Mappen du står i blir målmappe for kopieringen.</div>
+          <div class="target-browser">
+            <div id="trimbleBreadcrumbs" class="breadcrumb"><span class="muted">Venter på Trimble API-tilgang …</span></div>
+            <div class="tablewrap">
+              <table>
+                <thead><tr><th>Navn</th><th style="width:76px">Type</th></tr></thead>
+                <tbody id="trimbleFolderBody"><tr><td colspan="2" class="muted">Ingen mapper lastet.</td></tr></tbody>
+              </table>
+            </div>
+            <div class="actions">
+              <button id="trimbleGoUp" class="ghost" disabled>← Opp ett nivå</button>
+              <button id="trimbleRefresh" class="secondary" disabled>Oppdater mapper</button>
+            </div>
+          </div>
+          <div class="notice warning">MVP-en flytter én fil om gangen gjennom nettleseren. Dette reduserer minnebruk ved flervalg. For svært store samferdselsmodeller bør en senere produksjonsversjon bruke server-/cloud-streaming.</div>
         </div>
       </section>
     </aside>
@@ -73,17 +86,17 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
         <div id="breadcrumbs" class="breadcrumb"><span class="muted">Velg et Forma-prosjekt.</span></div>
         <div class="tablewrap">
           <table>
-            <thead><tr><th style="width:42%">Navn</th><th>Type</th><th>Oppdatert</th><th style="width:90px">Format</th></tr></thead>
-            <tbody id="fileBody"><tr><td colspan="4" class="muted">Ingen data lastet.</td></tr></tbody>
+            <thead><tr><th class="checkcell"><input id="selectVisibleFiles" type="checkbox" title="Velg alle filer i denne mappen"></th><th style="width:42%">Navn</th><th>Type</th><th>Oppdatert</th><th style="width:90px">Format</th></tr></thead>
+            <tbody id="fileBody"><tr><td colspan="5" class="muted">Ingen data lastet.</td></tr></tbody>
           </table>
         </div>
         <div class="actions"><button id="goUp" class="ghost" disabled>← Opp ett nivå</button><button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button></div>
       </section>
 
       <section class="card">
-        <h2>Valgt modell</h2>
-        <div id="selectedBox" class="selection muted">Velg en modellfil i listen over.</div>
-        <div class="actions"><button id="syncBtn" disabled>Kopier til Trimble Connect</button><button id="showBtn" class="secondary" disabled>Finn og vis i Trimble 3D</button></div>
+        <div class="row" style="justify-content:space-between"><h2 id="selectedHeading" style="margin:0">Valgte modeller (0)</h2><button id="clearSelected" class="ghost smallbtn" disabled>Fjern alle</button></div>
+        <div id="selectedBox" class="selection muted">Huk av én eller flere modellfiler i listen over.</div>
+        <div class="actions"><button id="syncBtn" disabled>Kopier valgte filer til Trimble Connect</button><button id="showBtn" class="secondary" disabled>Vis kopierte modeller i Trimble 3D</button></div>
         <div class="progress"><span id="progressBar"></span></div>
       </section>
 
@@ -102,7 +115,11 @@ const APS_CALLBACK_ORIGIN='http://localhost:3000';
 const MODEL_EXTS=new Set(['ifc','rvt','dwg','dxf','skp','nwd','nwc','trb','dgn','obj']);
 let TC_API=null,TC_PROJECT=null,TC_TOKEN=null,APS_TOKEN=null;
 let APS_CALLBACK_BUSY=false,APS_CALLBACK_STATE_HANDLED=null;
-let currentHub=null,currentProject=null,currentFolder=null,folderStack=[],selectedItem=null,lastSyncedName=null,lastSyncedFileId=null;
+let currentHub=null,currentProject=null,currentFolder=null,folderStack=[];
+const selectedItems=new Map();
+let currentFormaItems=[];
+let lastSyncedModels=[];
+let trimbleProjectData=null,trimbleCurrentFolder=null,trimbleFolderStack=[],trimbleTargetFolder=null,trimbleCurrentEntries=[];
 const $=id=>document.getElementById(id);
 
 function log(msg,type='info'){
