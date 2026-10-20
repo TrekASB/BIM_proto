@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Forma → Trimble Connect</title>
-<script type="module" src="trimble-tcps-bridge.js?v=20261016-multifile"></script>
+<script type="module" src="trimble-tcps-bridge.js?v=20261020-folderupload"></script>
 <style>
 :root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--red:#b42318;--amber:#b54708;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}body{padding:16px}.wrap{max-width:1280px;margin:0 auto}
@@ -90,7 +90,8 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
             <tbody id="fileBody"><tr><td colspan="5" class="muted">Ingen data lastet.</td></tr></tbody>
           </table>
         </div>
-        <div class="actions"><button id="goUp" class="ghost" disabled>← Opp ett nivå</button><button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button></div>
+        <div class="actions"><button id="goUp" class="ghost" disabled>← Opp ett nivå</button><button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button><button id="uploadFolderBtn" disabled>LAST OPP FILER</button></div>
+        <div id="uploadFolderHelp" class="help">Laster opp alle filer som ligger direkte i gjeldende Forma-mappe til valgt Trimble-mappe. Eksisterende filer med samme navn får ny versjon.</div>
       </section>
 
       <section class="card">
@@ -307,13 +308,20 @@ function renderEmpty(text){
   $('breadcrumbs').innerHTML='<span class="muted">'+escapeHtml(text)+'</span>';
   updateSelectAllCheckbox();
 }
+function updateFolderUploadButton(){
+  const btn=$('uploadFolderBtn');if(!btn)return;
+  const count=currentFormaItems.length;
+  btn.disabled=count===0||!trimbleProjectData;
+  btn.textContent=count>0?`LAST OPP FILER (${count})`:'LAST OPP FILER';
+}
 function updateSelectAllCheckbox(){
   const el=$('selectVisibleFiles');if(!el)return;
-  if(!currentFormaItems.length){el.checked=false;el.indeterminate=false;el.disabled=true;return;}
+  if(!currentFormaItems.length){el.checked=false;el.indeterminate=false;el.disabled=true;updateFolderUploadButton();return;}
   el.disabled=false;
   const count=currentFormaItems.filter(x=>selectedItems.has(x.id)).length;
   el.checked=count===currentFormaItems.length;
   el.indeterminate=count>0&&count<currentFormaItems.length;
+  updateFolderUploadButton();
 }
 function toggleFormaItem(item,checked){
   if(checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);
@@ -363,7 +371,7 @@ async function loadTrimbleRoot(){
   const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
   const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,onStatus:msg=>log(msg)});
   trimbleProjectData=data.project;trimbleCurrentFolder=null;trimbleFolderStack=[];trimbleTargetFolder=null;trimbleCurrentEntries=data.entries||[];
-  $('targetPath').value='/';renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=true;$('trimbleRefresh').disabled=false;updateSelection();
+  $('targetPath').value='/';renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=true;$('trimbleRefresh').disabled=false;updateSelection();updateFolderUploadButton();
   log('Trimble Connect-mappestruktur lastet.','ok');
 }
 async function openTrimbleFolder(folder){
@@ -373,7 +381,7 @@ async function openTrimbleFolder(folder){
     const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
     const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder,onStatus:()=>{}});
     trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
-    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;$('trimbleRefresh').disabled=false;updateSelection();
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;$('trimbleRefresh').disabled=false;updateSelection();updateFolderUploadButton();
   }catch(e){log(e.message||String(e),'error');}
 }
 async function trimbleGoUp(){
@@ -385,7 +393,7 @@ async function trimbleGoUp(){
     const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
     const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder:prev,onStatus:()=>{}});
     trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
-    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;updateSelection();
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;updateSelection();updateFolderUploadButton();
   }catch(e){log(e.message||String(e),'error');}
 }
 async function refreshTrimbleFolder(){
@@ -431,41 +439,89 @@ async function getAutodeskDownload(version){
   const{bucketKey,objectKey}=parseStorageUrn(storage),token=await getApsToken();const url=`${APS_BASE}/oss/v2/buckets/${encodeURIComponent(bucketKey)}/objects/${encodeURIComponent(objectKey)}/signeds3download?minutesExpiration=15`;
   const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('Kunne ikke opprette Autodesk nedlastingslenke: '+r.status+' '+await r.text());const j=await r.json();const signed=j.url||j.data?.url||j.signedUrl;if(!signed)throw new Error('Autodesk svarte uten signert nedlastings-URL.');return signed;
 }
-async function syncSelected(){
-  const items=[...selectedItems.values()];
+async function transferItems(items,{mode='selected'}={}){
   if(!items.length)return;
-  $('syncBtn').disabled=true;$('showBtn').disabled=true;setProgress(0);
+  const isFolderUpload=mode==='folder';
+  $('syncBtn').disabled=true;
+  $('uploadFolderBtn').disabled=true;
+  $('showBtn').disabled=true;
+  setProgress(0);
+
   const successes=[],failures=[];
   try{
     const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge(),targetPath=$('targetPath').value||'/';
-    log(`Starter kopiering av ${items.length} fil(er) til ${targetPath}.`);
+    const sourceName=currentFolder?.name||$('projectSelect').selectedOptions[0]?.textContent||'valgt Forma-mappe';
+    log(isFolderUpload
+      ? `Starter opplasting av alle ${items.length} fil(er) fra «${sourceName}» til ${targetPath}.`
+      : `Starter kopiering av ${items.length} valgte fil(er) til ${targetPath}.`
+    );
+
     for(let i=0;i<items.length;i++){
-      const item=items[i],name=item.attributes?.displayName||item.attributes?.name||'forma-model',base=i/items.length*100;
+      const item=items[i],name=item.attributes?.displayName||item.attributes?.name||'forma-file',base=i/items.length*100;
       try{
         setProgress(base+3);log(`[${i+1}/${items.length}] Henter siste versjon av ${name} …`);
-        const version=await getLatestVersion(item);setProgress(base+10/items.length);
-        const signed=await getAutodeskDownload(version);log(`[${i+1}/${items.length}] Laster ned fra Autodesk Forma …`);
-        const src=await fetch(signed);if(!src.ok)throw new Error('Nedlasting fra Autodesk storage feilet: '+src.status);
+        const version=await getLatestVersion(item);
+        const signed=await getAutodeskDownload(version);
+        log(`[${i+1}/${items.length}] Laster ned fra Autodesk Forma …`);
+        const src=await fetch(signed);
+        if(!src.ok)throw new Error('Nedlasting fra Autodesk storage feilet: '+src.status);
         const blob=await src.blob(),mb=blob.size/1024/1024;
         log(`[${i+1}/${items.length}] ${name}: ${mb.toFixed(1)} MB mottatt.`);
-        const result=await tcps.uploadBlob({token,projectId:TC_PROJECT.id,targetPath,targetFolder:trimbleTargetFolder,blob,fileName:name,mimeType:blob.type,onStatus:msg=>log(`[${i+1}/${items.length}] ${msg}`)});
-        successes.push({item,result,name});selectedItems.delete(item.id);
+
+        const result=await tcps.uploadBlob({
+          token,
+          projectId:TC_PROJECT.id,
+          targetPath,
+          targetFolder:trimbleTargetFolder,
+          blob,
+          fileName:name,
+          mimeType:blob.type,
+          onStatus:msg=>log(`[${i+1}/${items.length}] ${msg}`)
+        });
+
+        successes.push({item,result,name});
+        if(!isFolderUpload)selectedItems.delete(item.id);
         lastSyncedModels.push({name:result.name||name,fileId:result.fileId||null});
-        log(`[${i+1}/${items.length}] Kopiert: ${result.name||name}`,'ok');
+        log(`[${i+1}/${items.length}] Oppdatert/lastet opp: ${result.name||name}`,'ok');
       }catch(e){
-        failures.push({item,name,error:e.message||String(e)});log(`[${i+1}/${items.length}] ${name}: ${e.message||String(e)}`,'error');
+        failures.push({item,name,error:e.message||String(e)});
+        log(`[${i+1}/${items.length}] ${name}: ${e.message||String(e)}`,'error');
       }
       setProgress((i+1)/items.length*100);
     }
-    if(successes.length)log(`${successes.length} fil(er) ble kopiert til Trimble Connect.`,'ok');
-    if(failures.length)log(`${failures.length} fil(er) feilet og er fortsatt valgt slik at de kan prøves på nytt.`,'error');
+
+    if(successes.length)log(`${successes.length} fil(er) ble lastet opp til Trimble Connect.`,'ok');
+    if(failures.length)log(`${failures.length} fil(er) feilet. Se loggen over for detaljer.`,'error');
     $('showBtn').disabled=lastSyncedModels.length===0;
-    if(successes.length)log('Trimble prosesserer modellfilene. Når de er klare kan «Vis kopierte modeller i Trimble 3D» brukes.');
+    if(successes.length)log('Filer med samme navn i samme Trimble-mappe blir håndtert som ny versjon. Modellfiler kan være under prosessering før de vises i 3D.');
   }finally{
     if(currentFormaEntries.length)renderItems(currentFormaEntries);else updateSelection();
     $('syncBtn').disabled=selectedItems.size===0||!trimbleProjectData;
+    updateFolderUploadButton();
   }
 }
+
+async function syncSelected(){
+  const items=[...selectedItems.values()];
+  if(!items.length)return;
+  await transferItems(items,{mode:'selected'});
+}
+
+async function uploadCurrentFolder(){
+  const items=[...currentFormaItems];
+  if(!items.length){log('Gjeldende Forma-mappe inneholder ingen filer.','error');return;}
+  if(!trimbleProjectData){log('Trimble Connect-målmappe er ikke klar ennå.','error');return;}
+
+  const sourceName=currentFolder?.name||$('projectSelect').selectedOptions[0]?.textContent||'valgt mappe';
+  const targetPath=$('targetPath').value||'/';
+  const ok=window.confirm(
+    `LAST OPP FILER\n\nAlle ${items.length} filer i «${sourceName}» blir lastet opp til Trimble Connect:\n${targetPath}\n\nFiler med samme navn i mål-mappen får en ny versjon. Fortsette?`
+  );
+  if(!ok){log('Opplasting av hele mappen ble avbrutt.');return;}
+
+  await transferItems(items,{mode:'folder'});
+}
+
 async function showSynced(){
   if(!TC_API||!lastSyncedModels.length){log('Ingen kopierte modeller å vise ennå.','error');return;}
   try{
@@ -526,6 +582,7 @@ $('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;
 $('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries);updateSelection();};
 $('clearSelected').onclick=()=>{selectedItems.clear();if(currentFormaEntries.length)renderItems(currentFormaEntries);else updateSelection();};
 $('trimbleGoUp').onclick=trimbleGoUp;$('trimbleRefresh').onclick=refreshTrimbleFolder;
+$('uploadFolderBtn').onclick=uploadCurrentFolder;
 $('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
 
 (async()=>{
