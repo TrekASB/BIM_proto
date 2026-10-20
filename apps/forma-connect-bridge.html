@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Forma → Trimble Connect</title>
-<script type="module" src="trimble-tcps-bridge.js?v=20261020-metadata"></script>
+<script type="module" src="trimble-tcps-bridge.js?v=20261020-syncfilter"></script>
 <style>
 :root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--red:#b42318;--amber:#b54708;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}body{padding:16px}.wrap{max-width:1280px;margin:0 auto}
@@ -15,7 +15,7 @@
 input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:#fff;color:var(--text);font-size:12px}button{border:0;border-radius:8px;padding:9px 11px;font-size:12px;font-weight:800;cursor:pointer;background:var(--blue);color:#fff}button.secondary{background:#fff;color:var(--blue);border:1px solid #b8c7da}button.ghost{background:#eef2f6;color:#344054}button.danger{background:#fff;color:var(--red);border:1px solid #fecdca}button:disabled{opacity:.45;cursor:not-allowed}
 .notice{border:1px solid #b2ddff;background:#eff8ff;border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.5;color:#175cd3}.warning{border-color:#fedf89;background:#fffaeb;color:#b54708}
 .breadcrumb{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:0 0 10px}.crumb{border:0;background:#eef2f6;color:#344054;padding:5px 7px;font-size:11px;font-weight:700}
-.tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:430px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}#formaFileTable{min-width:1580px}#formaFileTable th,#formaFileTable td{white-space:nowrap}#formaFileTable td.description-cell{white-space:normal;min-width:180px;max-width:300px}th{position:sticky;top:0;background:#f8fafc;text-align:left;color:#475467;font-size:11px;padding:9px;border-bottom:1px solid var(--border)}td{padding:9px;border-bottom:1px solid #eef2f6;vertical-align:middle}tr.item{cursor:pointer}tr.item:hover{background:#f9fbff}tr.item.selected{background:#edf4ff}.name{font-weight:700}.muted{color:var(--muted)}.badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eef2f6;color:#475467}.badge.model{background:#edf4ff;color:#175cd3}
+.tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:430px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}#formaFileTable{min-width:1580px}#formaFileTable th,#formaFileTable td{white-space:nowrap}#formaFileTable td.description-cell{white-space:normal;min-width:180px;max-width:300px}th{position:sticky;top:0;background:#f8fafc;text-align:left;color:#475467;font-size:11px;padding:9px;border-bottom:1px solid var(--border)}td{padding:9px;border-bottom:1px solid #eef2f6;vertical-align:middle}tr.item{cursor:pointer}tr.item:hover{background:#f9fbff}tr.item.selected{background:#edf4ff}.name{font-weight:700}.muted{color:var(--muted)}.badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eef2f6;color:#475467}.badge.model{background:#edf4ff;color:#175cd3}.sync-badge{display:inline-block;font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;white-space:nowrap}.sync-new{background:#ecfdf3;color:#067647;border:1px solid #abefc6}.sync-updated{background:#fffaeb;color:#b54708;border:1px solid #fedf89}.sync-ok{background:#f2f4f7;color:#475467;border:1px solid #d0d5dd}.sync-check{background:#fef3f2;color:#b42318;border:1px solid #fecdca}.sync-loading{background:#eff8ff;color:#175cd3;border:1px solid #b2ddff}tr.sync-ready{background:#fbfffc}tr.sync-updated-row{background:#fffcf5}tr.sync-locked{color:#667085}
 .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.selection{padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);font-size:12px;line-height:1.5}.checkcell{width:38px;text-align:center}.checkcell input[type="checkbox"]{width:16px;height:16px;margin:0;cursor:pointer}.selected-list{display:grid;gap:6px;max-height:170px;overflow:auto}.selected-file{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;background:#fff;border:1px solid #e4e7ec;border-radius:8px}.selected-file button{padding:4px 7px;font-size:10px}.target-browser{margin-top:8px}.target-browser .tablewrap{max-height:260px}.target-path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.log{background:#101828;color:#d0d5dd;border-radius:10px;padding:10px;min-height:104px;max-height:190px;overflow:auto;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}.progress{height:7px;background:#eef2f6;border-radius:999px;overflow:hidden;margin-top:8px}.progress>span{display:block;width:0;height:100%;background:var(--blue);transition:width .25s}.smallbtn{padding:6px 8px;font-size:11px}
 @media(max-width:920px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start}.logo{width:100px}}
 </style>
@@ -87,7 +87,8 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
         <div class="tablewrap">
           <table id="formaFileTable">
             <thead><tr>
-              <th class="checkcell"><input id="selectVisibleFiles" type="checkbox" title="Velg alle filer i denne mappen"></th>
+              <th class="checkcell"><input id="selectVisibleFiles" type="checkbox" title="Velg alle filer som er klare for import"></th>
+              <th>Synk-status</th>
               <th>Navn</th>
               <th>Revisjon</th>
               <th>Versjon</th>
@@ -100,7 +101,7 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
               <th>Versjon lagt til</th>
               <th>Format</th>
             </tr></thead>
-            <tbody id="fileBody"><tr><td colspan="12" class="muted">Ingen data lastet.</td></tr></tbody>
+            <tbody id="fileBody"><tr><td colspan="13" class="muted">Ingen data lastet.</td></tr></tbody>
           </table>
         </div>
         <div class="actions"><button id="goUp" class="ghost" disabled>← Opp ett nivå</button><button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button><button id="uploadFolderBtn" disabled>LAST OPP FILER</button></div>
@@ -168,6 +169,81 @@ function customAttributeValue(result,patterns){
 function firstValue(obj,keys){
   for(const key of keys){const v=obj?.[key];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v;}
   return null;
+}
+
+function syncFolderId(){
+  return String(trimbleTargetFolder?.id||trimbleProjectData?.rootId||TC_PROJECT?.rootId||'root');
+}
+function syncStateKey(){
+  if(!TC_PROJECT?.id||!currentProject)return null;
+  return ['forma-trimble-sync-v1',TC_PROJECT.id,syncFolderId(),currentProject].join(':');
+}
+function readSyncState(){
+  const key=syncStateKey();if(!key)return {};
+  try{return JSON.parse(localStorage.getItem(key)||'{}')||{};}catch(_){return {};}
+}
+function writeSyncState(state){
+  const key=syncStateKey();if(!key)return;
+  localStorage.setItem(key,JSON.stringify(state||{}));
+}
+function sourceSnapshot(item,version=null){
+  const meta=currentFormaMeta.get(item.id)||{},a=version?.attributes||{},ia=item?.attributes||{};
+  return {
+    versionNumber:String(meta.versionNumber??a.versionNumber??''),
+    lastUpdated:String(meta.lastUpdated||ia.lastModifiedTime||a.lastModifiedTime||a.createTime||''),
+    versionId:String(meta.versionId||version?.id||'')
+  };
+}
+function getSyncStatus(item){
+  const meta=currentFormaMeta.get(item.id);
+  if(!meta)return{code:'loading',label:'KONTROLLERER …',eligible:false,badge:'sync-loading',row:''};
+
+  const current=sourceSnapshot(item),state=readSyncState(),previous=state[item.id];
+  if(!previous){
+    return{code:'new',label:'NY',eligible:true,badge:'sync-new',row:'sync-ready',current};
+  }
+
+  const versionChanged=String(current.versionNumber)!==String(previous.versionNumber??'');
+  const dateChanged=String(current.lastUpdated)!==String(previous.lastUpdated??'');
+
+  if(versionChanged&&dateChanged){
+    return{code:'updated',label:'OPPDATERT',eligible:true,badge:'sync-updated',row:'sync-updated-row',current,previous};
+  }
+  if(!versionChanged&&!dateChanged){
+    return{code:'synced',label:'SYNKRONISERT',eligible:false,badge:'sync-ok',row:'sync-locked',current,previous};
+  }
+  return{
+    code:'check',
+    label:'KONTROLLER',
+    eligible:false,
+    badge:'sync-check',
+    row:'sync-locked',
+    current,
+    previous,
+    title:versionChanged?'Versjonsnummer er endret, men Last Updated er uendret.':'Last Updated er endret, men versjonsnummeret er uendret.'
+  };
+}
+function saveSyncRecord(item,version){
+  const state=readSyncState(),snap=sourceSnapshot(item,version);
+  state[item.id]={
+    itemId:item.id,
+    name:item.attributes?.displayName||item.attributes?.name||'',
+    versionNumber:snap.versionNumber,
+    lastUpdated:snap.lastUpdated,
+    versionId:snap.versionId,
+    syncedAt:new Date().toISOString(),
+    trimbleProjectId:TC_PROJECT?.id||'',
+    trimbleFolderId:syncFolderId(),
+    trimblePath:$('targetPath')?.value||'/'
+  };
+  writeSyncState(state);
+}
+function isImportEligible(item){return getSyncStatus(item).eligible;}
+function eligibleCurrentFiles(){return currentFormaItems.filter(isImportEligible);}
+function pruneSelections(){
+  for(const [id,item] of [...selectedItems.entries()]){
+    if(!isImportEligible(item))selectedItems.delete(id);
+  }
 }
 
 window.addEventListener('trimble-tcps-bridge-ready',()=>setChip('sdkChip','Trimble SDK: 4.0.11 klar','ok'));
@@ -339,26 +415,41 @@ function renderBreadcrumbs(){
 }
 function renderEmpty(text){
   currentFormaItems=[];currentFormaEntries=[];currentFormaMeta.clear();formaMetaRequestId++;
-  $('fileBody').innerHTML=`<tr><td colspan="12" class="muted">${escapeHtml(text)}</td></tr>`;
+  $('fileBody').innerHTML=`<tr><td colspan="13" class="muted">${escapeHtml(text)}</td></tr>`;
   $('breadcrumbs').innerHTML='<span class="muted">'+escapeHtml(text)+'</span>';
   updateSelectAllCheckbox();
 }
 function updateFolderUploadButton(){
   const btn=$('uploadFolderBtn');if(!btn)return;
-  const count=currentFormaItems.length;
+  const count=eligibleCurrentFiles().length;
   btn.disabled=count===0||!trimbleProjectData;
   btn.textContent=count>0?`LAST OPP FILER (${count})`:'LAST OPP FILER';
+  const help=$('uploadFolderHelp');
+  if(help){
+    const total=currentFormaItems.length;
+    help.textContent=count
+      ? `${count} av ${total} filer er klare for import. Kun NY eller OPPDATERT lastes opp.`
+      : (total?`Alle ${total} filer er allerede synkronisert eller blokkert for kontroll.`:'Ingen filer i gjeldende mappe.');
+  }
 }
 function updateSelectAllCheckbox(){
   const el=$('selectVisibleFiles');if(!el)return;
   if(!currentFormaItems.length){el.checked=false;el.indeterminate=false;el.disabled=true;updateFolderUploadButton();return;}
   el.disabled=false;
-  const count=currentFormaItems.filter(x=>selectedItems.has(x.id)).length;
-  el.checked=count===currentFormaItems.length;
-  el.indeterminate=count>0&&count<currentFormaItems.length;
+  const eligible=eligibleCurrentFiles();
+  if(!eligible.length){el.checked=false;el.indeterminate=false;el.disabled=true;updateFolderUploadButton();return;}
+  el.disabled=false;
+  const count=eligible.filter(x=>selectedItems.has(x.id)).length;
+  el.checked=count===eligible.length;
+  el.indeterminate=count>0&&count<eligible.length;
   updateFolderUploadButton();
 }
 function toggleFormaItem(item,checked){
+  const status=getSyncStatus(item);
+  if(checked&&!status.eligible){
+    log(`${item.attributes?.displayName||item.attributes?.name||'Filen'} kan ikke overføres: ${status.label}.`,'info');
+    return;
+  }
   if(checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);
   updateSelection();updateSelectAllCheckbox();
   const row=$('fileBody').querySelector(`tr[data-id="${CSS.escape(item.id)}"]`);
@@ -442,14 +533,16 @@ function renderItems(items,{loadMeta=true}={}){
     currentFormaMeta.clear();
     const requestId=++formaMetaRequestId;
     if(files.length)loadFormaFileMetadata(files,requestId).catch(e=>log('Kunne ikke hente komplett Forma-filmetadata: '+(e.message||String(e)),'error'));
+  }else{
+    pruneSelections();
   }
 
-  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="12" class="muted">Mappen er tom.</td></tr>';updateSelectAllCheckbox();return;}
+  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="13" class="muted">Mappen er tom.</td></tr>';updateSelectAllCheckbox();return;}
+
   $('fileBody').innerHTML=list.map((x,i)=>{
     const folder=x.type==='folders',
       name=x.attributes?.displayName||x.attributes?.name||'(uten navn)',
       ext=folder?'':extOf(name),
-      checked=!folder&&selectedItems.has(x.id),
       meta=currentFormaMeta.get(x.id),
       itemUpdated=x.attributes?.lastModifiedTime||x.attributes?.createTime||x.attributes?.lastModifiedTimeRollup,
       itemUser=x.attributes?.lastModifiedUserName||x.attributes?.createUserName||'–';
@@ -457,6 +550,7 @@ function renderItems(items,{loadMeta=true}={}){
     if(folder){
       return `<tr class="item" data-i="${i}" data-id="${escapeHtml(x.id)}">
         <td class="checkcell"></td>
+        <td>–</td>
         <td><span class="name">📁 ${escapeHtml(name)}</span></td>
         <td>–</td><td>–</td><td>–</td><td class="description-cell">–</td><td>–</td>
         <td class="muted">${escapeHtml(fmtDate(itemUpdated))}</td>
@@ -465,19 +559,25 @@ function renderItems(items,{loadMeta=true}={}){
       </tr>`;
     }
 
-    const loading=!meta;
-    const version=meta?.versionNumber!==undefined&&meta?.versionNumber!=='–'?`V${meta.versionNumber}`:(loading?'…':'–');
-    const revision=loading?'…':(meta?.revision||'–');
-    const reviewStatus=loading?'…':(meta?.reviewStatus||'–');
-    const description=loading?'Laster metadata …':(meta?.description||'–');
-    const size=loading?'…':formatBytes(meta?.size);
-    const lastUpdated=fmtDate(meta?.lastUpdated||itemUpdated);
-    const updatedBy=meta?.updatedBy||itemUser;
-    const versionAddedBy=loading?'…':(meta?.versionAddedBy||'–');
-    const versionAddedAt=loading?'…':fmtDate(meta?.versionAddedAt);
+    const status=getSyncStatus(x),
+      checked=status.eligible&&selectedItems.has(x.id),
+      loading=!meta,
+      version=meta?.versionNumber!==undefined&&meta?.versionNumber!=='–'?`V${meta.versionNumber}`:(loading?'…':'–'),
+      revision=loading?'…':(meta?.revision||'–'),
+      reviewStatus=loading?'…':(meta?.reviewStatus||'–'),
+      description=loading?'Laster metadata …':(meta?.description||'–'),
+      size=loading?'…':formatBytes(meta?.size),
+      lastUpdated=fmtDate(meta?.lastUpdated||itemUpdated),
+      updatedBy=meta?.updatedBy||itemUser,
+      versionAddedBy=loading?'…':(meta?.versionAddedBy||'–'),
+      versionAddedAt=loading?'…':fmtDate(meta?.versionAddedAt);
 
-    return `<tr class="item ${checked?'selected':''}" data-i="${i}" data-id="${escapeHtml(x.id)}">
-      <td class="checkcell"><input type="checkbox" class="file-check" ${checked?'checked':''} aria-label="Velg ${escapeHtml(name)}"></td>
+    const disabled=status.eligible?'':'disabled';
+    const title=status.title?` title="${escapeHtml(status.title)}"`:'';
+
+    return `<tr class="item ${checked?'selected':''} ${status.row||''}" data-i="${i}" data-id="${escapeHtml(x.id)}">
+      <td class="checkcell"><input type="checkbox" class="file-check" ${checked?'checked':''} ${disabled} aria-label="Velg ${escapeHtml(name)}"></td>
+      <td><span class="sync-badge ${status.badge}"${title}>${escapeHtml(status.label)}</span></td>
       <td><span class="name">📄 ${escapeHtml(name)}</span></td>
       <td>${escapeHtml(revision)}</td>
       <td><span class="badge model">${escapeHtml(version)}</span></td>
@@ -494,9 +594,11 @@ function renderItems(items,{loadMeta=true}={}){
 
   [...$('fileBody').querySelectorAll('tr[data-i]')].forEach(row=>{
     const item=list[Number(row.dataset.i)],box=row.querySelector('.file-check');
-    if(box)box.addEventListener('click',e=>{e.stopPropagation();toggleFormaItem(item,box.checked);});
+    if(box&&!box.disabled)box.addEventListener('click',e=>{e.stopPropagation();toggleFormaItem(item,box.checked);});
     row.addEventListener('click',()=>{
       if(item.type==='folders'){openFolder(item);return;}
+      const status=getSyncStatus(item);
+      if(!status.eligible){log(`${item.attributes?.displayName||item.attributes?.name||'Filen'}: ${status.label}. Ingen overføring tillatt.`,'info');return;}
       const next=!selectedItems.has(item.id);if(box)box.checked=next;toggleFormaItem(item,next);
     });
   });
@@ -504,6 +606,7 @@ function renderItems(items,{loadMeta=true}={}){
 }
 
 function updateSelection(){
+  pruneSelections();
   const box=$('selectedBox'),count=selectedItems.size;
   $('selectedHeading').textContent=`Valgte modeller (${count})`;
   $('clearSelected').disabled=count===0;
@@ -526,7 +629,7 @@ async function loadTrimbleRoot(){
   const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
   const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,onStatus:msg=>log(msg)});
   trimbleProjectData=data.project;trimbleCurrentFolder=null;trimbleFolderStack=[];trimbleTargetFolder=null;trimbleCurrentEntries=data.entries||[];
-  $('targetPath').value='/';renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=true;$('trimbleRefresh').disabled=false;updateSelection();updateFolderUploadButton();
+  $('targetPath').value='/';renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=true;$('trimbleRefresh').disabled=false;if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});else updateSelection();updateFolderUploadButton();
   log('Trimble Connect-mappestruktur lastet.','ok');
 }
 async function openTrimbleFolder(folder){
@@ -536,7 +639,7 @@ async function openTrimbleFolder(folder){
     const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
     const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder,onStatus:()=>{}});
     trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
-    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;$('trimbleRefresh').disabled=false;updateSelection();updateFolderUploadButton();
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;$('trimbleRefresh').disabled=false;if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});else updateSelection();updateFolderUploadButton();
   }catch(e){log(e.message||String(e),'error');}
 }
 async function trimbleGoUp(){
@@ -548,7 +651,7 @@ async function trimbleGoUp(){
     const token=await requestTrimbleToken(true),tcps=await waitForTcpsBridge();
     const data=await tcps.listFolder({token,projectId:TC_PROJECT.id,folder:prev,onStatus:()=>{}});
     trimbleProjectData=data.project;trimbleCurrentEntries=data.entries||[];
-    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;updateSelection();updateFolderUploadButton();
+    updateTrimbleTargetPath();renderTrimbleBreadcrumbs();renderTrimbleEntries();$('trimbleGoUp').disabled=false;if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});else updateSelection();updateFolderUploadButton();
   }catch(e){log(e.message||String(e),'error');}
 }
 async function refreshTrimbleFolder(){
@@ -635,7 +738,8 @@ async function transferItems(items,{mode='selected'}={}){
         });
 
         successes.push({item,result,name});
-        if(!isFolderUpload)selectedItems.delete(item.id);
+        saveSyncRecord(item,version);
+        selectedItems.delete(item.id);
         lastSyncedModels.push({name:result.name||name,fileId:result.fileId||null});
         log(`[${i+1}/${items.length}] Oppdatert/lastet opp: ${result.name||name}`,'ok');
       }catch(e){
@@ -663,14 +767,14 @@ async function syncSelected(){
 }
 
 async function uploadCurrentFolder(){
-  const items=[...currentFormaItems];
-  if(!items.length){log('Gjeldende Forma-mappe inneholder ingen filer.','error');return;}
+  const items=eligibleCurrentFiles();
+  if(!items.length){log('Ingen filer i gjeldende Forma-mappe har ny versjon og ny Last Updated-dato.','info');return;}
   if(!trimbleProjectData){log('Trimble Connect-målmappe er ikke klar ennå.','error');return;}
 
   const sourceName=currentFolder?.name||$('projectSelect').selectedOptions[0]?.textContent||'valgt mappe';
   const targetPath=$('targetPath').value||'/';
   const ok=window.confirm(
-    `LAST OPP FILER\n\nAlle ${items.length} filer i «${sourceName}» blir lastet opp til Trimble Connect:\n${targetPath}\n\nFiler med samme navn i mål-mappen får en ny versjon. Fortsette?`
+    `LAST OPP FILER\n\n${items.length} nye/oppdaterte filer i «${sourceName}» blir lastet opp til Trimble Connect:\n${targetPath}\n\nKun filer med status NY eller OPPDATERT overføres. Fortsette?`
   );
   if(!ok){log('Opplasting av hele mappen ble avbrutt.');return;}
 
@@ -734,7 +838,7 @@ $('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('no
 $('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=()=>{window.open('http://localhost:3000/','formaOauthHelper','width=560,height=420,resizable=yes,scrollbars=yes');log('Åpnet localhost-helper. Hvis siden ikke åpner, start local-helper først.');};$('logoutAps').onclick=logoutAps;
 $('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
 $('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;
-$('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries,{loadMeta:false});updateSelection();};
+$('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked&&isImportEligible(item))selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries,{loadMeta:false});updateSelection();};
 $('clearSelected').onclick=()=>{selectedItems.clear();if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});else updateSelection();};
 $('trimbleGoUp').onclick=trimbleGoUp;$('trimbleRefresh').onclick=refreshTrimbleFolder;
 $('uploadFolderBtn').onclick=uploadCurrentFolder;
