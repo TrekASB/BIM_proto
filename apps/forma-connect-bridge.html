@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Forma → Trimble Connect</title>
-<script type="module" src="trimble-tcps-bridge.js?v=20261020-folderupload"></script>
+<script type="module" src="trimble-tcps-bridge.js?v=20261020-metadata"></script>
 <style>
 :root{--blue:#0057B8;--bg:#f3f5f8;--card:#fff;--border:#d9e0ea;--text:#101828;--muted:#667085;--green:#18864b;--red:#b42318;--amber:#b54708;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}body{padding:16px}.wrap{max-width:1280px;margin:0 auto}
@@ -15,7 +15,7 @@
 input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:#fff;color:var(--text);font-size:12px}button{border:0;border-radius:8px;padding:9px 11px;font-size:12px;font-weight:800;cursor:pointer;background:var(--blue);color:#fff}button.secondary{background:#fff;color:var(--blue);border:1px solid #b8c7da}button.ghost{background:#eef2f6;color:#344054}button.danger{background:#fff;color:var(--red);border:1px solid #fecdca}button:disabled{opacity:.45;cursor:not-allowed}
 .notice{border:1px solid #b2ddff;background:#eff8ff;border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.5;color:#175cd3}.warning{border-color:#fedf89;background:#fffaeb;color:#b54708}
 .breadcrumb{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:0 0 10px}.crumb{border:0;background:#eef2f6;color:#344054;padding:5px 7px;font-size:11px;font-weight:700}
-.tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:430px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}th{position:sticky;top:0;background:#f8fafc;text-align:left;color:#475467;font-size:11px;padding:9px;border-bottom:1px solid var(--border)}td{padding:9px;border-bottom:1px solid #eef2f6;vertical-align:middle}tr.item{cursor:pointer}tr.item:hover{background:#f9fbff}tr.item.selected{background:#edf4ff}.name{font-weight:700}.muted{color:var(--muted)}.badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eef2f6;color:#475467}.badge.model{background:#edf4ff;color:#175cd3}
+.tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:430px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}#formaFileTable{min-width:1580px}#formaFileTable th,#formaFileTable td{white-space:nowrap}#formaFileTable td.description-cell{white-space:normal;min-width:180px;max-width:300px}th{position:sticky;top:0;background:#f8fafc;text-align:left;color:#475467;font-size:11px;padding:9px;border-bottom:1px solid var(--border)}td{padding:9px;border-bottom:1px solid #eef2f6;vertical-align:middle}tr.item{cursor:pointer}tr.item:hover{background:#f9fbff}tr.item.selected{background:#edf4ff}.name{font-weight:700}.muted{color:var(--muted)}.badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eef2f6;color:#475467}.badge.model{background:#edf4ff;color:#175cd3}
 .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.selection{padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);font-size:12px;line-height:1.5}.checkcell{width:38px;text-align:center}.checkcell input[type="checkbox"]{width:16px;height:16px;margin:0;cursor:pointer}.selected-list{display:grid;gap:6px;max-height:170px;overflow:auto}.selected-file{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;background:#fff;border:1px solid #e4e7ec;border-radius:8px}.selected-file button{padding:4px 7px;font-size:10px}.target-browser{margin-top:8px}.target-browser .tablewrap{max-height:260px}.target-path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.log{background:#101828;color:#d0d5dd;border-radius:10px;padding:10px;min-height:104px;max-height:190px;overflow:auto;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}.progress{height:7px;background:#eef2f6;border-radius:999px;overflow:hidden;margin-top:8px}.progress>span{display:block;width:0;height:100%;background:var(--blue);transition:width .25s}.smallbtn{padding:6px 8px;font-size:11px}
 @media(max-width:920px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start}.logo{width:100px}}
 </style>
@@ -85,9 +85,22 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
         <h2>Forma Data Management</h2>
         <div id="breadcrumbs" class="breadcrumb"><span class="muted">Velg et Forma-prosjekt.</span></div>
         <div class="tablewrap">
-          <table>
-            <thead><tr><th class="checkcell"><input id="selectVisibleFiles" type="checkbox" title="Velg alle filer i denne mappen"></th><th style="width:42%">Navn</th><th>Type</th><th>Oppdatert</th><th style="width:90px">Format</th></tr></thead>
-            <tbody id="fileBody"><tr><td colspan="5" class="muted">Ingen data lastet.</td></tr></tbody>
+          <table id="formaFileTable">
+            <thead><tr>
+              <th class="checkcell"><input id="selectVisibleFiles" type="checkbox" title="Velg alle filer i denne mappen"></th>
+              <th>Navn</th>
+              <th>Revisjon</th>
+              <th>Versjon</th>
+              <th>Review status</th>
+              <th>Beskrivelse</th>
+              <th>Størrelse</th>
+              <th>Sist oppdatert</th>
+              <th>Oppdatert av</th>
+              <th>Versjon lagt til av</th>
+              <th>Versjon lagt til</th>
+              <th>Format</th>
+            </tr></thead>
+            <tbody id="fileBody"><tr><td colspan="12" class="muted">Ingen data lastet.</td></tr></tbody>
           </table>
         </div>
         <div class="actions"><button id="goUp" class="ghost" disabled>← Opp ett nivå</button><button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button><button id="uploadFolderBtn" disabled>LAST OPP FILER</button></div>
@@ -119,6 +132,8 @@ let APS_CALLBACK_BUSY=false,APS_CALLBACK_STATE_HANDLED=null;
 let currentHub=null,currentProject=null,currentFolder=null,folderStack=[];
 const selectedItems=new Map();
 let currentFormaItems=[],currentFormaEntries=[];
+const currentFormaMeta=new Map();
+let formaMetaRequestId=0;
 let lastSyncedModels=[];
 let trimbleProjectData=null,trimbleCurrentFolder=null,trimbleFolderStack=[],trimbleTargetFolder=null,trimbleCurrentEntries=[];
 const $=id=>document.getElementById(id);
@@ -133,7 +148,27 @@ function setProgress(v){$('progressBar').style.width=Math.max(0,Math.min(100,v))
 function escapeHtml(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function extOf(name){const m=String(name||'').toLowerCase().match(/\.([a-z0-9]+)$/);return m?m[1]:'';}
 function fmtDate(v){if(!v)return '–';const d=new Date(v);return isNaN(d)?'–':d.toLocaleString('nb-NO');}
+function formatBytes(value){
+  const n=Number(value);if(!Number.isFinite(n)||n<0)return '–';
+  if(n<1024)return n+' B';
+  const units=['KB','MB','GB','TB'];let v=n/1024,i=0;
+  while(v>=1024&&i<units.length-1){v/=1024;i++;}
+  return (v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2))+' '+units[i];
+}
 function normalizeName(v){return String(v||'').trim().toLowerCase();}
+function docsProjectId(){return String(currentProject||'').replace(/^b\./,'');}
+function customAttributeValue(result,patterns){
+  const attrs=Array.isArray(result?.customAttributes)?result.customAttributes:[];
+  for(const attr of attrs){
+    const name=String(attr?.name||'');
+    if(patterns.some(rx=>rx.test(name))&&attr?.value!==undefined&&attr?.value!==null&&String(attr.value).trim()!=='')return attr.value;
+  }
+  return null;
+}
+function firstValue(obj,keys){
+  for(const key of keys){const v=obj?.[key];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v;}
+  return null;
+}
 
 window.addEventListener('trimble-tcps-bridge-ready',()=>setChip('sdkChip','Trimble SDK: 4.0.11 klar','ok'));
 if(window.TrimbleTcpsBridge)setChip('sdkChip','Trimble SDK: '+window.TrimbleTcpsBridge.sdkVersion+' klar','ok');
@@ -303,8 +338,8 @@ function renderBreadcrumbs(){
   el.innerHTML=out;el.querySelector('[data-root]')?.addEventListener('click',loadTopFolders);
 }
 function renderEmpty(text){
-  currentFormaItems=[];currentFormaEntries=[];
-  $('fileBody').innerHTML=`<tr><td colspan="5" class="muted">${escapeHtml(text)}</td></tr>`;
+  currentFormaItems=[];currentFormaEntries=[];currentFormaMeta.clear();formaMetaRequestId++;
+  $('fileBody').innerHTML=`<tr><td colspan="12" class="muted">${escapeHtml(text)}</td></tr>`;
   $('breadcrumbs').innerHTML='<span class="muted">'+escapeHtml(text)+'</span>';
   updateSelectAllCheckbox();
 }
@@ -329,15 +364,134 @@ function toggleFormaItem(item,checked){
   const row=$('fileBody').querySelector(`tr[data-id="${CSS.escape(item.id)}"]`);
   if(row)row.classList.toggle('selected',checked);
 }
-function renderItems(items){
+async function loadDocsBatchMetadata(versionPairs,requestId){
+  if(!versionPairs.length||!currentProject)return;
+  try{
+    const token=await getApsToken(),projectId=docsProjectId();
+    const chunks=[];
+    for(let i=0;i<versionPairs.length;i+=50)chunks.push(versionPairs.slice(i,i+50));
+    for(const chunk of chunks){
+      const urns=chunk.map(x=>x.version?.id).filter(Boolean);
+      if(!urns.length)continue;
+      const r=await fetch(`${APS_BASE}/bim360/docs/v1/projects/${encodeURIComponent(projectId)}/versions:batch-get`,{
+        method:'POST',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({urns})
+      });
+      if(!r.ok)throw new Error(`Document metadata API ${r.status}`);
+      const body=await r.json(),results=body?.results||[];
+      for(const result of results){
+        const pair=chunk.find(x=>x.version?.id===result?.urn||x.item?.id===result?.itemUrn);
+        if(!pair)continue;
+        const meta=currentFormaMeta.get(pair.item.id)||{};
+        meta.revision=firstValue(result,['revision','revisionNumber','revisionId'])||
+          customAttributeValue(result,[/^revision$/i,/revision\s*(no|number|nr|id)?/i,/^rev\.?$/i])||meta.revision||'–';
+        meta.reviewStatus=firstValue(result,['reviewStatus','reviewState','reviewStatusName'])||
+          customAttributeValue(result,[/review.*status/i,/status.*review/i])||meta.reviewStatus||'–';
+        meta.description=firstValue(result,['description'])||meta.description||'–';
+        currentFormaMeta.set(pair.item.id,meta);
+      }
+    }
+  }catch(e){
+    log('Revisjon/review-status kunne ikke hentes fra Autodesk Document Management API. Øvrig filmetadata vises fortsatt.','info');
+  }
+  if(requestId===formaMetaRequestId&&currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});
+}
+
+async function loadFormaFileMetadata(files,requestId){
+  const pairs=[];
+  const worker=async item=>{
+    try{
+      const version=await getLatestVersion(item),a=version?.attributes||{},ia=item?.attributes||{},ext=ia?.extension?.data||{};
+      const meta={
+        revision:firstValue(a?.extension?.data||{},['revision','revisionNumber'])||firstValue(ext,['revision','revisionNumber'])||'–',
+        versionNumber:a.versionNumber??'–',
+        reviewStatus:firstValue(a?.extension?.data||{},['reviewStatus','reviewState'])||'–',
+        description:ext.description||'–',
+        size:a.storageSize??null,
+        lastUpdated:ia.lastModifiedTime||a.lastModifiedTime||a.createTime||null,
+        updatedBy:ia.lastModifiedUserName||a.lastModifiedUserName||a.createUserName||'–',
+        versionAddedBy:a.createUserName||'–',
+        versionAddedAt:a.createTime||null,
+        versionId:version?.id||null
+      };
+      if(requestId!==formaMetaRequestId)return;
+      currentFormaMeta.set(item.id,meta);
+      pairs.push({item,version});
+    }catch(e){
+      if(requestId===formaMetaRequestId)currentFormaMeta.set(item.id,{error:true});
+    }
+  };
+
+  const queue=[...files];
+  const workers=Array.from({length:Math.min(6,queue.length)},async()=>{
+    while(queue.length){const item=queue.shift();if(item)await worker(item);}
+  });
+  await Promise.all(workers);
+  if(requestId!==formaMetaRequestId)return;
+  if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});
+  await loadDocsBatchMetadata(pairs,requestId);
+}
+
+function renderItems(items,{loadMeta=true}={}){
   currentFormaEntries=items;
   const folders=items.filter(x=>x.type==='folders'),files=items.filter(x=>x.type==='items'),list=[...folders,...files];
   currentFormaItems=files;
-  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="5" class="muted">Mappen er tom.</td></tr>';updateSelectAllCheckbox();return;}
+
+  if(loadMeta){
+    currentFormaMeta.clear();
+    const requestId=++formaMetaRequestId;
+    if(files.length)loadFormaFileMetadata(files,requestId).catch(e=>log('Kunne ikke hente komplett Forma-filmetadata: '+(e.message||String(e)),'error'));
+  }
+
+  if(!list.length){$('fileBody').innerHTML='<tr><td colspan="12" class="muted">Mappen er tom.</td></tr>';updateSelectAllCheckbox();return;}
   $('fileBody').innerHTML=list.map((x,i)=>{
-    const folder=x.type==='folders',name=x.attributes?.displayName||x.attributes?.name||'(uten navn)',ext=folder?'':extOf(name),model=MODEL_EXTS.has(ext),updated=x.attributes?.lastModifiedTime||x.attributes?.createTime||x.attributes?.lastModifiedTimeRollup,checked=!folder&&selectedItems.has(x.id);
-    return `<tr class="item ${checked?'selected':''}" data-i="${i}" data-id="${escapeHtml(x.id)}"><td class="checkcell">${folder?'':`<input type="checkbox" class="file-check" ${checked?'checked':''} aria-label="Velg ${escapeHtml(name)}">`}</td><td><span class="name">${folder?'📁 ':'📄 '}${escapeHtml(name)}</span></td><td>${folder?'Mappe':(model?'<span class="badge model">Modell</span>':'Fil')}</td><td class="muted">${escapeHtml(fmtDate(updated))}</td><td>${folder?'–':`<span class="badge">${escapeHtml((ext||'?').toUpperCase())}</span>`}</td></tr>`;
+    const folder=x.type==='folders',
+      name=x.attributes?.displayName||x.attributes?.name||'(uten navn)',
+      ext=folder?'':extOf(name),
+      checked=!folder&&selectedItems.has(x.id),
+      meta=currentFormaMeta.get(x.id),
+      itemUpdated=x.attributes?.lastModifiedTime||x.attributes?.createTime||x.attributes?.lastModifiedTimeRollup,
+      itemUser=x.attributes?.lastModifiedUserName||x.attributes?.createUserName||'–';
+
+    if(folder){
+      return `<tr class="item" data-i="${i}" data-id="${escapeHtml(x.id)}">
+        <td class="checkcell"></td>
+        <td><span class="name">📁 ${escapeHtml(name)}</span></td>
+        <td>–</td><td>–</td><td>–</td><td class="description-cell">–</td><td>–</td>
+        <td class="muted">${escapeHtml(fmtDate(itemUpdated))}</td>
+        <td>${escapeHtml(itemUser)}</td>
+        <td>–</td><td>–</td><td>–</td>
+      </tr>`;
+    }
+
+    const loading=!meta;
+    const version=meta?.versionNumber!==undefined&&meta?.versionNumber!=='–'?`V${meta.versionNumber}`:(loading?'…':'–');
+    const revision=loading?'…':(meta?.revision||'–');
+    const reviewStatus=loading?'…':(meta?.reviewStatus||'–');
+    const description=loading?'Laster metadata …':(meta?.description||'–');
+    const size=loading?'…':formatBytes(meta?.size);
+    const lastUpdated=fmtDate(meta?.lastUpdated||itemUpdated);
+    const updatedBy=meta?.updatedBy||itemUser;
+    const versionAddedBy=loading?'…':(meta?.versionAddedBy||'–');
+    const versionAddedAt=loading?'…':fmtDate(meta?.versionAddedAt);
+
+    return `<tr class="item ${checked?'selected':''}" data-i="${i}" data-id="${escapeHtml(x.id)}">
+      <td class="checkcell"><input type="checkbox" class="file-check" ${checked?'checked':''} aria-label="Velg ${escapeHtml(name)}"></td>
+      <td><span class="name">📄 ${escapeHtml(name)}</span></td>
+      <td>${escapeHtml(revision)}</td>
+      <td><span class="badge model">${escapeHtml(version)}</span></td>
+      <td>${escapeHtml(reviewStatus)}</td>
+      <td class="description-cell">${escapeHtml(description)}</td>
+      <td>${escapeHtml(size)}</td>
+      <td class="muted">${escapeHtml(lastUpdated)}</td>
+      <td>${escapeHtml(updatedBy)}</td>
+      <td>${escapeHtml(versionAddedBy)}</td>
+      <td class="muted">${escapeHtml(versionAddedAt)}</td>
+      <td><span class="badge">${escapeHtml((ext||'?').toUpperCase())}</span></td>
+    </tr>`;
   }).join('');
+
   [...$('fileBody').querySelectorAll('tr[data-i]')].forEach(row=>{
     const item=list[Number(row.dataset.i)],box=row.querySelector('.file-check');
     if(box)box.addEventListener('click',e=>{e.stopPropagation();toggleFormaItem(item,box.checked);});
@@ -348,6 +502,7 @@ function renderItems(items){
   });
   updateSelectAllCheckbox();
 }
+
 function updateSelection(){
   const box=$('selectedBox'),count=selectedItems.size;
   $('selectedHeading').textContent=`Valgte modeller (${count})`;
@@ -362,7 +517,7 @@ function updateSelection(){
   }).join('')+'</div>';
   [...box.querySelectorAll('.remove-selected')].forEach(btn=>btn.addEventListener('click',()=>{
     selectedItems.delete(btn.dataset.id);updateSelection();
-    if(currentFormaEntries.length)renderItems(currentFormaEntries);
+    if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});
   }));
 }
 
@@ -495,7 +650,7 @@ async function transferItems(items,{mode='selected'}={}){
     $('showBtn').disabled=lastSyncedModels.length===0;
     if(successes.length)log('Filer med samme navn i samme Trimble-mappe blir håndtert som ny versjon. Modellfiler kan være under prosessering før de vises i 3D.');
   }finally{
-    if(currentFormaEntries.length)renderItems(currentFormaEntries);else updateSelection();
+    if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});else updateSelection();
     $('syncBtn').disabled=selectedItems.size===0||!trimbleProjectData;
     updateFolderUploadButton();
   }
@@ -579,8 +734,8 @@ $('callbackUrl').value=APS_CALLBACK;$('clientId').value=localStorage.getItem('no
 $('saveClient').onclick=saveClient;$('loginAps').onclick=()=>loginAps().catch(e=>log(e.message,'error'));$('testHelper').onclick=()=>{window.open('http://localhost:3000/','formaOauthHelper','width=560,height=420,resizable=yes,scrollbars=yes');log('Åpnet localhost-helper. Hvis siden ikke åpner, start local-helper først.');};$('logoutAps').onclick=logoutAps;
 $('hubSelect').onchange=e=>loadProjects(e.target.value);$('projectSelect').onchange=e=>selectProject(e.target.value);$('reloadForma').onclick=loadHubs;
 $('goUp').onclick=goUp;$('refreshFolder').onclick=refreshFolder;
-$('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries);updateSelection();};
-$('clearSelected').onclick=()=>{selectedItems.clear();if(currentFormaEntries.length)renderItems(currentFormaEntries);else updateSelection();};
+$('selectVisibleFiles').onchange=e=>{for(const item of currentFormaItems){if(e.target.checked)selectedItems.set(item.id,item);else selectedItems.delete(item.id);}renderItems(currentFormaEntries,{loadMeta:false});updateSelection();};
+$('clearSelected').onclick=()=>{selectedItems.clear();if(currentFormaEntries.length)renderItems(currentFormaEntries,{loadMeta:false});else updateSelection();};
 $('trimbleGoUp').onclick=trimbleGoUp;$('trimbleRefresh').onclick=refreshTrimbleFolder;
 $('uploadFolderBtn').onclick=uploadCurrentFolder;
 $('syncBtn').onclick=syncSelected;$('showBtn').onclick=showSynced;$('clearLog').onclick=()=>$('log').textContent='Klar.';
