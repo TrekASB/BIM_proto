@@ -105,7 +105,7 @@ input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding
           </table>
         </div>
         <div class="actions"><button id="goUp" class="ghost" disabled>← Opp ett nivå</button><button id="refreshFolder" class="secondary" disabled>Oppdater mappe</button><button id="uploadFolderBtn" disabled>LAST OPP FILER</button></div>
-        <div id="uploadFolderHelp" class="help">Laster opp alle filer som ligger direkte i gjeldende Forma-mappe til valgt Trimble-mappe. Eksisterende filer med samme navn får ny versjon.</div>
+        <div id="uploadFolderHelp" class="help">Kun filer med status <b>NY</b> eller <b>OPPDATERT</b> kan overføres. OPPDATERT krever både nytt versjonsnummer og ny Last Updated-dato.</div>
       </section>
 
       <section class="card">
@@ -197,6 +197,9 @@ function sourceSnapshot(item,version=null){
 function getSyncStatus(item){
   const meta=currentFormaMeta.get(item.id);
   if(!meta)return{code:'loading',label:'KONTROLLERER …',eligible:false,badge:'sync-loading',row:''};
+  if(meta.error||meta.versionNumber===undefined||meta.versionNumber===null||meta.versionNumber==='–'||!meta.lastUpdated){
+    return{code:'check',label:'KONTROLLER',eligible:false,badge:'sync-check',row:'sync-locked',title:'Versjonsnummer eller Last Updated kunne ikke verifiseres fra Autodesk.'};
+  }
 
   const current=sourceSnapshot(item),state=readSyncState(),previous=state[item.id];
   if(!previous){
